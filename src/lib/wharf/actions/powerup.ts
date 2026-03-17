@@ -106,14 +106,9 @@ export function getPowerupParamsNET(
 	const net_cost = Asset.from(0, ANTELOPE_SYSTEM_TOKEN);
 	const net_frac = Int64.from(0);
 	if (requirements.netRequired) {
-		const adjusted = getMinimumBillablePowerupAmount(
-			kb,
-			requirements.netRequired,
-			(amount) => powerup.net.price_per_kb(sample, amount),
-			'net'
-		);
-		net_frac.add(powerup.net.frac_by_kb(sample, Number(adjusted.amount)));
-		net_cost.units.add(Asset.fromFloat(adjusted.cost, ANTELOPE_SYSTEM_TOKEN).units);
+		const cost = powerup.net.price_per_kb(sample, Number(kb));
+		net_frac.add(powerup.net.frac_by_kb(sample, Number(kb)));
+		net_cost.units.add(Asset.fromFloat(cost, ANTELOPE_SYSTEM_TOKEN).units);
 	}
 	return { net_cost, net_frac };
 }
