@@ -8,6 +8,7 @@ describe('powerup billable precision', () => {
 		const adjusted = getMinimumBillablePowerupAmount(
 			Int64.from(10),
 			true,
+			0.0001,
 			(amount) => amount * 0.000004,
 			'cpu'
 		);
@@ -21,6 +22,7 @@ describe('powerup billable precision', () => {
 		const adjusted = getMinimumBillablePowerupAmount(
 			Int64.from(30),
 			true,
+			0.0001,
 			(amount) => amount * 0.000004,
 			'cpu'
 		);
@@ -34,6 +36,7 @@ describe('powerup billable precision', () => {
 		const adjusted = getMinimumBillablePowerupAmount(
 			Int64.from(10),
 			true,
+			0.0001,
 			(amount) => {
 				if (amount < 40) {
 					throw new Error(
@@ -48,5 +51,19 @@ describe('powerup billable precision', () => {
 
 		expect(adjusted.amount.equals(Int64.from(40))).toBeTrue();
 		expect(adjusted.cost).toBeGreaterThanOrEqual(0.0001);
+	});
+
+	it('honors the provided minimum cost threshold', async () => {
+		const { getMinimumBillablePowerupAmount } = await import('../src/lib/wharf/actions/powerup');
+		const adjusted = getMinimumBillablePowerupAmount(
+			Int64.from(10),
+			true,
+			0.1,
+			(amount) => amount * 0.0001,
+			'cpu'
+		);
+
+		expect(adjusted.amount.equals(Int64.from(1280))).toBeTrue();
+		expect(adjusted.cost).toBeGreaterThanOrEqual(0.1);
 	});
 });

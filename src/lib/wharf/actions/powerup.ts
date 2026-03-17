@@ -5,7 +5,6 @@ import { managerLog } from '$lib/logger';
 import { objectify } from '$lib/utils';
 import { ANTELOPE_SYSTEM_TOKEN } from 'src/config';
 
-const MINIMUM_BILLABLE_POWERUP_COST = 0.0001;
 const MAX_BILLABLE_POWERUP_ADJUSTMENTS = 32;
 
 export interface AccountRequiredResources {
@@ -25,6 +24,7 @@ function isBelowPrecisionError(error: unknown): boolean {
 export function getMinimumBillablePowerupAmount(
 	amount: Int64,
 	required: boolean,
+	minimumCost: number,
 	getCost: (amount: number) => number,
 	resource: 'cpu' | 'net'
 ): MinimumBillableAmountResult {
@@ -46,7 +46,7 @@ export function getMinimumBillablePowerupAmount(
 			cost = 0;
 		}
 
-		if (cost >= MINIMUM_BILLABLE_POWERUP_COST) {
+		if (cost >= minimumCost) {
 			break;
 		}
 
@@ -80,7 +80,8 @@ export function getPowerupParamsCPU(
 	ms: Int64,
 	powerup: PowerUpState,
 	sample: SampleUsage,
-	requirements: AccountRequiredResources
+	requirements: AccountRequiredResources,
+	minimumCost: number
 ) {
 	const cpu_cost = Asset.from(0, ANTELOPE_SYSTEM_TOKEN);
 	const cpu_frac = Int64.from(0);
@@ -88,6 +89,7 @@ export function getPowerupParamsCPU(
 		const adjusted = getMinimumBillablePowerupAmount(
 			ms,
 			requirements.cpuRequired,
+			minimumCost,
 			(amount) => powerup.cpu.price_per_ms(sample, amount),
 			'cpu'
 		);
@@ -123,7 +125,25 @@ export function getPowerupParams(
 	receiver: Name,
 	max_payment: Asset
 ) {
-	const { cpu_cost, cpu_frac } = getPowerupParamsCPU(ms, powerup, sample, requirements);
+	const minimumCost = powerup.min_powerup_fee.value;
+
+	if ((requirements.cpuRequired || requirements.netRequired) && max_payment.value < minimumCost) {
+		throw new Error(
+			'Max payment ' +
+				String(max_payment) +
+				' is below the chain minimum powerup fee ' +
+				String(powerup.min_powerup_fee) +
+				'.'
+		);
+	}
+
+	const { cpu_cost, cpu_frac } = getPowerupParamsCPU(
+		ms,
+		powerup,
+		sample,
+		requirements,
+		minimumCost
+	);
 	const { net_cost, net_frac } = getPowerupParamsNET(kb, powerup, sample, requirements);
 
 	const params = {
