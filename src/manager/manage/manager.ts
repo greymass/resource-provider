@@ -125,7 +125,7 @@ export async function manageManagerAccount(manager: Session, context: ManagerCon
 		min_kb: Int64.from(MANAGER_MIN_KB),
 		inc_ms: Int64.from(MANAGER_INC_MS),
 		inc_kb: Int64.from(MANAGER_INC_KB),
-		max_fee: Asset.fromFloat(0.1, ANTELOPE_SYSTEM_TOKEN)
+		max_fee: Asset.fromFloat(0.11, ANTELOPE_SYSTEM_TOKEN)
 	});
 	const requiredResources = getAccountRequiredResources(managerAccount, data);
 	const params = getPowerupParams(

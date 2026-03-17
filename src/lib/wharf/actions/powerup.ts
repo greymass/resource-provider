@@ -146,13 +146,14 @@ export function getPowerupParams(
 	receiver: Name,
 	max_payment: Asset
 ) {
-	const minimumCost = powerup.min_powerup_fee.value;
+	const feePrecisionUnit = 1 / Math.pow(10, powerup.min_powerup_fee.symbol.precision);
+	const minimumCost = powerup.min_powerup_fee.value + feePrecisionUnit;
 
 	if ((requirements.cpuRequired || requirements.netRequired) && max_payment.value < minimumCost) {
 		throw new Error(
 			'Max payment ' +
 				String(max_payment) +
-				' is below the chain minimum powerup fee ' +
+				' is below the required minimum powerup fee target ' +
 				String(powerup.min_powerup_fee) +
 				'.'
 		);
