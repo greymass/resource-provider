@@ -13,7 +13,7 @@ describe('powerup billable precision', () => {
 			'cpu'
 		);
 
-		expect(adjusted.amount.equals(Int64.from(40))).toBeTrue();
+		expect(adjusted.amount.equals(Int64.from(26))).toBeTrue();
 		expect(adjusted.cost).toBeGreaterThanOrEqual(0.0001);
 	});
 
@@ -63,7 +63,7 @@ describe('powerup billable precision', () => {
 			'cpu'
 		);
 
-		expect(adjusted.amount.equals(Int64.from(1280))).toBeTrue();
+		expect(adjusted.amount.equals(Int64.from(1000))).toBeTrue();
 		expect(adjusted.cost).toBeGreaterThanOrEqual(0.1);
 	});
 });

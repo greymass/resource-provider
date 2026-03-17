@@ -32,19 +32,25 @@ export function getMinimumBillablePowerupAmount(
 		return { amount, cost: 0 };
 	}
 
-	let adjustedAmount = Int64.from(amount);
-	let cost = 0;
-	let attempts = 0;
-
-	for (;;) {
+	const evaluateCost = (candidateAmount: Int64) => {
 		try {
-			cost = getCost(Number(adjustedAmount));
+			return getCost(Number(candidateAmount));
 		} catch (error) {
 			if (!isBelowPrecisionError(error)) {
 				throw error;
 			}
-			cost = 0;
+
+			return 0;
 		}
+	};
+
+	let adjustedAmount = Int64.from(amount);
+	let lowerBound = Int64.zero;
+	let cost = 0;
+	let attempts = 0;
+
+	for (;;) {
+		cost = evaluateCost(adjustedAmount);
 
 		if (cost >= minimumCost) {
 			break;
@@ -60,8 +66,23 @@ export function getMinimumBillablePowerupAmount(
 			);
 		}
 
+		lowerBound = adjustedAmount;
 		adjustedAmount = adjustedAmount.multiplying(2);
 		attempts += 1;
+	}
+
+	if (attempts > 0) {
+		while (adjustedAmount.subtracting(lowerBound).gt(Int64.from(1))) {
+			const midpoint = lowerBound.adding(adjustedAmount).dividing(2, 'floor');
+			const midpointCost = evaluateCost(midpoint);
+
+			if (midpointCost >= minimumCost) {
+				adjustedAmount = midpoint;
+				cost = midpointCost;
+			} else {
+				lowerBound = midpoint;
+			}
+		}
 	}
 
 	if (!adjustedAmount.equals(amount)) {
