@@ -28,4 +28,25 @@ describe('powerup billable precision', () => {
 		expect(adjusted.amount.equals(Int64.from(30))).toBeTrue();
 		expect(adjusted.cost).toBeGreaterThanOrEqual(0.0001);
 	});
+
+	it('retries when pricing throws below-precision errors', async () => {
+		const { getMinimumBillablePowerupAmount } = await import('../src/lib/wharf/actions/powerup');
+		const adjusted = getMinimumBillablePowerupAmount(
+			Int64.from(10),
+			true,
+			(amount) => {
+				if (amount < 40) {
+					throw new Error(
+						'Price (0.0000 EOS) for requested CPU amount (10000us) below required precision, increase requested amount.'
+					);
+				}
+
+				return amount * 0.000004;
+			},
+			'cpu'
+		);
+
+		expect(adjusted.amount.equals(Int64.from(40))).toBeTrue();
+		expect(adjusted.cost).toBeGreaterThanOrEqual(0.0001);
+	});
 });

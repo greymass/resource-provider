@@ -18,6 +18,10 @@ interface MinimumBillableAmountResult {
 	cost: number;
 }
 
+function isBelowPrecisionError(error: unknown): boolean {
+	return String(error).includes('below required precision');
+}
+
 export function getMinimumBillablePowerupAmount(
 	amount: Int64,
 	required: boolean,
@@ -29,13 +33,22 @@ export function getMinimumBillablePowerupAmount(
 	}
 
 	let adjustedAmount = Int64.from(amount);
-	let cost = getCost(Number(adjustedAmount));
+	let cost = 0;
 	let attempts = 0;
 
-	while (cost < MINIMUM_BILLABLE_POWERUP_COST) {
-		adjustedAmount = adjustedAmount.multiplying(2);
-		cost = getCost(Number(adjustedAmount));
-		attempts += 1;
+	for (;;) {
+		try {
+			cost = getCost(Number(adjustedAmount));
+		} catch (error) {
+			if (!isBelowPrecisionError(error)) {
+				throw error;
+			}
+			cost = 0;
+		}
+
+		if (cost >= MINIMUM_BILLABLE_POWERUP_COST) {
+			break;
+		}
 
 		if (attempts >= MAX_BILLABLE_POWERUP_ADJUSTMENTS) {
 			throw new Error(
@@ -46,6 +59,9 @@ export function getMinimumBillablePowerupAmount(
 					'.'
 			);
 		}
+
+		adjustedAmount = adjustedAmount.multiplying(2);
+		attempts += 1;
 	}
 
 	if (!adjustedAmount.equals(amount)) {
