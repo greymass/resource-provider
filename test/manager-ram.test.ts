@@ -1,13 +1,8 @@
 import { describe, expect, it } from 'bun:test';
 
-import { Asset, Int64 } from '@wharfkit/antelope';
+const { Asset, Int64 } = await import('@wharfkit/antelope');
 
-import type { ManagedAccount } from '$lib/db/models/manager/account';
-
-process.env.ANTELOPE_CHAIN_ID = '73e4385a2708e6d7048834fbc1079f2fabb17b3c125b146af438971e90716c4d';
-process.env.ENABLE_MANAGED_ACCOUNT_RAM = 'true';
-
-async function makeManagedAccount(overrides: Partial<ManagedAccount> = {}) {
+async function makeManagedAccount(overrides: Record<string, unknown> = {}) {
 	const { ManagedAccount } = await import('../src/lib/db/models/manager/account');
 	return ManagedAccount.from({
 		account: 'test.gm',

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import { Int64 } from '@wharfkit/antelope';
+const { Int64 } = await import('@wharfkit/antelope');
 
 describe('powerup billable precision', () => {
 	it('scales small resource requests until they are billable', async () => {

@@ -1,8 +1,6 @@
 import { Asset, Int64, Name } from '@wharfkit/antelope';
 import { PowerUpState, SampleUsage } from '@wharfkit/resources';
 
-import { managerLog } from '$lib/logger';
-import { objectify } from '$lib/utils';
 import { ANTELOPE_SYSTEM_TOKEN } from 'src/config';
 
 const MAX_BILLABLE_POWERUP_ADJUSTMENTS = 32;
@@ -86,15 +84,6 @@ export function getMinimumBillablePowerupAmount(
 		}
 	}
 
-	if (!adjustedAmount.equals(amount)) {
-		managerLog.info('Adjusted powerup amount to meet minimum billable precision', {
-			resource,
-			requested: String(amount),
-			adjusted: String(adjustedAmount),
-			cost
-		});
-	}
-
 	return { amount: adjustedAmount, cost };
 }
 
@@ -167,20 +156,8 @@ export function getPowerupParams(
 		);
 	}
 
-	const { cpu_cost, cpu_frac } = getPowerupParamsCPU(
-		ms,
-		powerup,
-		sample,
-		requirements,
-		minimumCost
-	);
-	const { net_cost, net_frac } = getPowerupParamsNET(
-		kb,
-		powerup,
-		sample,
-		requirements,
-		minimumCost
-	);
+	const { cpu_frac } = getPowerupParamsCPU(ms, powerup, sample, requirements, minimumCost);
+	const { net_frac } = getPowerupParamsNET(kb, powerup, sample, requirements, minimumCost);
 
 	const params = {
 		cpu_frac,
@@ -190,8 +167,6 @@ export function getPowerupParams(
 		days: 1,
 		max_payment
 	};
-
-	managerLog.debug('Powerup Calculations', objectify({ params, costs: { cpu_cost, net_cost } }));
 
 	return params;
 }
