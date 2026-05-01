@@ -66,4 +66,18 @@ describe('powerup billable precision', () => {
 		expect(adjusted.amount.equals(Int64.from(1000))).toBeTrue();
 		expect(adjusted.cost).toBeGreaterThanOrEqual(0.1);
 	});
+
+	it('scales net-only requests until they are billable', async () => {
+		const { getMinimumBillablePowerupAmount } = await import('../src/lib/wharf/actions/powerup');
+		const adjusted = getMinimumBillablePowerupAmount(
+			Int64.from(10),
+			true,
+			0.1,
+			(amount) => amount * 0.00001,
+			'net'
+		);
+
+		expect(adjusted.amount.equals(Int64.from(10000))).toBeTrue();
+		expect(adjusted.cost).toBeGreaterThanOrEqual(0.1);
+	});
 });
