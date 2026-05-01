@@ -1,5 +1,4 @@
 import { beforeAll, describe, expect, it } from 'bun:test';
-
 import type { Elysia } from 'elysia';
 
 import { server } from '../src/provider';
