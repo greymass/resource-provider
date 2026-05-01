@@ -1,7 +1,6 @@
-import { API } from '@wharfkit/antelope';
+import { API, Int64 } from '@wharfkit/antelope';
 import { Resources } from '@wharfkit/resources';
 
-import { AccountRequiredResources } from './actions/powerup';
 import { getClient } from './client';
 
 import { ManagedAccount } from '$lib/db/models/manager/account';
@@ -64,16 +63,30 @@ export function getAccountRequiresNET(
 	return netRequired;
 }
 
-export function getAccountRequiredResources(
-	managed: ManagedAccount,
-	data: API.v1.AccountObject
-): AccountRequiredResources {
+export function getAccountRequiresRAM(
+	account: ManagedAccount,
+	resources: AccountResources
+): boolean {
+	if (account.min_ram_kb.lte(Int64.zero) || account.inc_ram_kb.lte(Int64.zero)) {
+		return false;
+	}
+	const ramMinimum = account.min_ram_kb.multiplying(1000);
+	const ramRequired = resources.ram.lt(ramMinimum);
+	managerLog.debug(
+		'Account RAM Resource Status',
+		objectify({ ramMinimum, ramCurrent: resources.ram, ramRequired })
+	);
+	return ramRequired;
+}
+
+export function getAccountRequiredResources(managed: ManagedAccount, data: API.v1.AccountObject) {
 	const resources = getAccountCurrentResources(data);
 	const cpuRequired = getAccountRequiresCPU(managed, resources);
 	const netRequired = getAccountRequiresNET(managed, resources);
-	if (cpuRequired || netRequired) {
+	const ramRequired = getAccountRequiresRAM(managed, resources);
+	if (cpuRequired || netRequired || ramRequired) {
 		managerLog.info(
-			'Account requires additional network resources',
+			'Account requires additional resources',
 			objectify({
 				account: managed.account,
 				cpu: {
@@ -85,9 +98,14 @@ export function getAccountRequiredResources(
 					current: resources.net,
 					minimum: managed.min_kb.multiplying(1000),
 					required: netRequired
+				},
+				ram: {
+					current: resources.ram,
+					minimum: managed.min_ram_kb.multiplying(1000),
+					required: ramRequired
 				}
 			})
 		);
 	}
-	return { cpuRequired, netRequired };
+	return { cpuRequired, netRequired, ramRequired };
 }

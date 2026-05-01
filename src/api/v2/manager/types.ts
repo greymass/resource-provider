@@ -8,8 +8,10 @@ export const v2ManagedAccountType = t.Object({
 	account: t.String(),
 	min_ms: t.Integer(),
 	min_kb: t.Integer(),
+	min_ram_kb: t.Optional(t.Integer()),
 	inc_ms: t.Integer(),
 	inc_kb: t.Integer(),
+	inc_ram_kb: t.Optional(t.Integer()),
 	max_fee: t.String()
 });
 
@@ -32,8 +34,10 @@ export const v2ManagerAddBody = t.Object(v2ManagedAccountType.properties, {
 			account: 'test.gm',
 			min_ms: 10,
 			min_kb: 10,
+			min_ram_kb: 10,
 			inc_ms: 5,
 			inc_kb: 5,
+			inc_ram_kb: 5,
 			max_fee: '0.1000 A'
 		}
 	]

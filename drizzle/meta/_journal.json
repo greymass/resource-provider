@@ -50,6 +50,13 @@
       "when": 1772039909079,
       "tag": "0006_nebulous_wendell_rand",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1777676528268,
+      "tag": "0007_handy_mercury",
+      "breakpoints": true
     }
   ]
 }

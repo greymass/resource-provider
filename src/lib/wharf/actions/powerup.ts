@@ -10,6 +10,7 @@ const MAX_BILLABLE_POWERUP_ADJUSTMENTS = 32;
 export interface AccountRequiredResources {
 	cpuRequired: boolean;
 	netRequired: boolean;
+	ramRequired?: boolean;
 }
 
 interface MinimumBillableAmountResult {

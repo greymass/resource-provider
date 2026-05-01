@@ -123,8 +123,10 @@ export async function manageManagerAccount(manager: Session, context: ManagerCon
 		account: MANAGER_ACCOUNT_NAME,
 		min_ms: Int64.from(MANAGER_MIN_MS),
 		min_kb: Int64.from(MANAGER_MIN_KB),
+		min_ram_kb: Int64.zero,
 		inc_ms: Int64.from(MANAGER_INC_MS),
 		inc_kb: Int64.from(MANAGER_INC_KB),
+		inc_ram_kb: Int64.zero,
 		max_fee: Asset.fromFloat(0.11, ANTELOPE_SYSTEM_TOKEN)
 	});
 	const requiredResources = getAccountRequiredResources(managerAccount, data);
