@@ -41,7 +41,9 @@ export async function manageAccountResources(
 		);
 		if (params.cpu_frac.gt(Int64.zero) || params.net_frac.gt(Int64.zero)) {
 			const systemContract = await getContract(ANTELOPE_SYSTEM_CONTRACT);
-			const action = await systemContract.action('powerup', params);
+			const action = await systemContract.action('powerup', params, {
+				authorization: [manager.permissionLevel]
+			});
 			managerLog.debug(
 				'powerup action to perform',
 				objectify({ account: managed.account, action, params })

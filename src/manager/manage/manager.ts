@@ -150,7 +150,11 @@ export async function manageManagerAccount(manager: Session, context: ManagerCon
 			})
 		);
 		const systemContract = await getContract(ANTELOPE_SYSTEM_CONTRACT);
-		actions.push(await systemContract.action('powerup', params));
+		actions.push(
+			await systemContract.action('powerup', params, {
+				authorization: [manager.permissionLevel]
+			})
+		);
 	} else {
 		managerLog.debug('no powerup required', {
 			account: objectify(managerAccount)
