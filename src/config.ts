@@ -37,6 +37,9 @@ export const MANAGER_MIN_MS = process.env.MANAGER_MIN_MS ? Number(process.env.MA
 export const MANAGER_MIN_KB = process.env.MANAGER_MIN_KB ? Number(process.env.MANAGER_MIN_KB) : 5;
 export const MANAGER_INC_MS = process.env.MANAGER_INC_MS ? Number(process.env.MANAGER_INC_MS) : 10;
 export const MANAGER_INC_KB = process.env.MANAGER_INC_KB ? Number(process.env.MANAGER_INC_KB) : 10;
+export const MANAGER_MAX_FEE = process.env.MANAGER_MAX_FEE
+	? Number(process.env.MANAGER_MAX_FEE)
+	: 0.25;
 export const ENABLE_MANAGED_ACCOUNT_RAM = isENVTrue(
 	process.env.ENABLE_MANAGED_ACCOUNT_RAM ?? 'false'
 );
