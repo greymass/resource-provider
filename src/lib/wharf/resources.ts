@@ -7,7 +7,7 @@ import { ManagedAccount } from '$lib/db/models/manager/account';
 import { generalLog, managerLog } from '$lib/logger';
 import { AccountResources } from '$lib/types';
 import { objectify } from '$lib/utils';
-import { ANTELOPE_SAMPLE_ACCOUNT } from 'src/config';
+import { ANTELOPE_SAMPLE_ACCOUNT, ENABLE_MANAGED_ACCOUNT_RAM } from 'src/config';
 
 export function getResourcesClient() {
 	return new Resources({
@@ -67,6 +67,9 @@ export function getAccountRequiresRAM(
 	account: ManagedAccount,
 	resources: AccountResources
 ): boolean {
+	if (!ENABLE_MANAGED_ACCOUNT_RAM) {
+		return false;
+	}
 	if (account.min_ram_kb.lte(Int64.zero) || account.inc_ram_kb.lte(Int64.zero)) {
 		return false;
 	}
