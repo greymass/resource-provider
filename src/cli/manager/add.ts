@@ -4,7 +4,11 @@ import { Argument, Command } from 'commander';
 import { ManagedAccount, managedAccounts } from '$lib/db/models/manager/account';
 import { managerLog } from '$lib/logger';
 import { objectify } from '$lib/utils';
-import { ANTELOPE_SYSTEM_TOKEN } from 'src/config';
+import {
+	ANTELOPE_SYSTEM_TOKEN,
+	MANAGED_ACCOUNT_RAM_INCREMENT_KB,
+	MANAGED_ACCOUNT_RAM_MINIMUM_KB
+} from 'src/config';
 
 export function makeManagerAddCommand() {
 	const command = new Command('add');
@@ -37,14 +41,14 @@ export function makeManagerAddCommand() {
 		.addArgument(
 			new Argument(
 				'[min_ram_kb]',
-				'Minimum RAM available for account in kilobytes before buying RAM (default: 0, disabled)'
-			).default(0)
+				`Minimum RAM available for account in kilobytes before buying RAM (default: ${MANAGED_ACCOUNT_RAM_MINIMUM_KB})`
+			).default(MANAGED_ACCOUNT_RAM_MINIMUM_KB)
 		)
 		.addArgument(
 			new Argument(
 				'[inc_ram_kb]',
-				'RAM increment to buy in kilobytes when the RAM minimum is not met (default: 0, disabled)'
-			).default(0)
+				`RAM increment to buy in kilobytes when the RAM minimum is not met (default: ${MANAGED_ACCOUNT_RAM_INCREMENT_KB})`
+			).default(MANAGED_ACCOUNT_RAM_INCREMENT_KB)
 		)
 		.description('Automatically manage CPU/NET/RAM resources for an account')
 		.action((account, min_ms, min_kb, inc_ms, inc_kb, max_fee, min_ram_kb, inc_ram_kb) => {

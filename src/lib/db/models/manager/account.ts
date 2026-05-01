@@ -6,6 +6,7 @@ import { v2ManagedAccountType } from '$api/v2/manager/types';
 import { database } from '$lib/db';
 import { AbstractDatabase } from '$lib/db/abstract';
 import * as schema from '$lib/db/schema';
+import { MANAGED_ACCOUNT_RAM_INCREMENT_KB, MANAGED_ACCOUNT_RAM_MINIMUM_KB } from 'src/config';
 
 @Struct.type('managed_account')
 export class ManagedAccount extends Struct {
@@ -45,8 +46,8 @@ export class ManagedAccountDatabase extends AbstractDatabase {
 	async addManagedAccount(data: ManagedAccountType) {
 		const source = data instanceof ManagedAccount ? data.toJSON() : data;
 		const account = ManagedAccount.from({
-			min_ram_kb: 0,
-			inc_ram_kb: 0,
+			min_ram_kb: MANAGED_ACCOUNT_RAM_MINIMUM_KB,
+			inc_ram_kb: MANAGED_ACCOUNT_RAM_INCREMENT_KB,
 			...source
 		});
 		return database.insert(this.schema.users).values(account.toJSON()).onConflictDoUpdate({
