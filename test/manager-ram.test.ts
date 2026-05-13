@@ -55,4 +55,20 @@ describe('manager RAM resources', () => {
 
 		expect(required).toBeFalse();
 	});
+
+	it('creates self-managed accounts with RAM management disabled by default', async () => {
+		const { getSelfManagedAccount } = await import('../src/lib/self-management');
+		const managed = getSelfManagedAccount('manager.gm', {
+			minMs: 5,
+			minKb: 5,
+			incMs: 10,
+			incKb: 10,
+			maxFee: '0.2500',
+			buyramEnabled: true,
+			ramMinimumKb: 100
+		});
+
+		expect(managed.min_ram_kb.equals(Int64.zero)).toBeTrue();
+		expect(managed.inc_ram_kb.equals(Int64.zero)).toBeTrue();
+	});
 });

@@ -1,4 +1,4 @@
-import { Action, Asset, Int64 } from '@wharfkit/antelope';
+import { Action, Asset, Int64, NameType } from '@wharfkit/antelope';
 import { Session } from '@wharfkit/session';
 
 import { ManagedAccount } from '$lib/db/models/manager/account';
@@ -21,6 +21,19 @@ export interface SelfManagementConfig {
 	maxFee: string;
 	buyramEnabled: boolean;
 	ramMinimumKb: number;
+}
+
+export function getSelfManagedAccount(actor: NameType, config: SelfManagementConfig) {
+	return ManagedAccount.from({
+		account: actor,
+		min_ms: Int64.from(config.minMs),
+		min_kb: Int64.from(config.minKb),
+		min_ram_kb: Int64.zero,
+		inc_ms: Int64.from(config.incMs),
+		inc_kb: Int64.from(config.incKb),
+		inc_ram_kb: Int64.zero,
+		max_fee: Asset.fromFloat(Number(config.maxFee), ANTELOPE_SYSTEM_TOKEN)
+	});
 }
 
 export async function manageSelfResources(session: Session, config: SelfManagementConfig) {
@@ -47,14 +60,7 @@ export async function manageSelfResources(session: Session, config: SelfManageme
 		}
 	}
 
-	const managed = ManagedAccount.from({
-		account: actor,
-		min_ms: Int64.from(config.minMs),
-		min_kb: Int64.from(config.minKb),
-		inc_ms: Int64.from(config.incMs),
-		inc_kb: Int64.from(config.incKb),
-		max_fee: Asset.fromFloat(Number(config.maxFee), ANTELOPE_SYSTEM_TOKEN)
-	});
+	const managed = getSelfManagedAccount(actor, config);
 
 	const requiredResources = getAccountRequiredResources(managed, data);
 	const sampleUsage = await getSampledUsage();
