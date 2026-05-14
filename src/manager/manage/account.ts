@@ -9,7 +9,7 @@ import { ManagedAccount } from '$lib/db/models/manager/account';
 import { managerLog } from '$lib/logger';
 import { makeBuyRamBytesAction } from '$lib/manager/setup';
 import { objectify } from '$lib/utils';
-import { getPowerupParams } from '$lib/wharf/actions/powerup';
+import { getPowerupParams, getUncappedPowerupMaxPayment } from '$lib/wharf/actions/powerup';
 import { getClient } from '$lib/wharf/client';
 import { getContract } from '$lib/wharf/contracts';
 import { getAccountRequiredResources } from '$lib/wharf/resources';
@@ -37,7 +37,7 @@ export async function manageAccountResources(
 			requiredResources,
 			manager.actor,
 			managed.account,
-			managed.max_fee
+			getUncappedPowerupMaxPayment()
 		);
 		if (params.cpu_frac.gt(Int64.zero) || params.net_frac.gt(Int64.zero)) {
 			const systemContract = await getContract(ANTELOPE_SYSTEM_CONTRACT);

@@ -10,6 +10,12 @@ import {
 	MANAGED_ACCOUNT_RAM_MINIMUM_KB
 } from 'src/config';
 
+function parseLegacyMaxFee(maxFee: unknown): string {
+	const numeric = Number(maxFee ?? 0);
+	const amount = Number.isFinite(numeric) ? numeric : 0;
+	return String(Asset.fromFloat(amount, ANTELOPE_SYSTEM_TOKEN));
+}
+
 export function makeManagerAddCommand() {
 	const command = new Command('add');
 	command
@@ -34,9 +40,9 @@ export function makeManagerAddCommand() {
 		)
 		.addArgument(
 			new Argument(
-				'<max_fee>',
-				`Maximum fee the provider can charge for a single powerup (e.g. 1 for ${Asset.fromFloat(1, ANTELOPE_SYSTEM_TOKEN || '4,TOKEN')})`
-			)
+				'[legacy_max_fee]',
+				'Deprecated compatibility field. Managed account powerups are uncapped.'
+			).default(0)
 		)
 		.addArgument(
 			new Argument(
@@ -60,7 +66,7 @@ export function makeManagerAddCommand() {
 				inc_ms,
 				inc_kb,
 				inc_ram_kb,
-				max_fee: String(Asset.fromFloat(Number(max_fee), ANTELOPE_SYSTEM_TOKEN))
+				max_fee: parseLegacyMaxFee(max_fee)
 			});
 			managerLog.info('Adding account to manage', objectify(data));
 			managedAccounts.addManagedAccount(data);

@@ -24,6 +24,20 @@ function makeJungle4NetResource() {
 }
 
 describe('powerup billable precision', () => {
+	it('uses a practical uncapped max payment for managed accounts', async () => {
+		const { getUncappedPowerupMaxPayment } = await import('../src/lib/wharf/actions/powerup');
+		const maxPayment = getUncappedPowerupMaxPayment('4,EOS');
+
+		expect(String(maxPayment)).toBe('999999999999.9999 EOS');
+	});
+
+	it('builds uncapped max payments for whole-unit system tokens', async () => {
+		const { getUncappedPowerupMaxPayment } = await import('../src/lib/wharf/actions/powerup');
+		const maxPayment = getUncappedPowerupMaxPayment('0,TST');
+
+		expect(String(maxPayment)).toBe('999999999999 TST');
+	});
+
 	it('scales small resource requests until they are billable', async () => {
 		const { getMinimumBillablePowerupAmount } = await import('../src/lib/wharf/actions/powerup');
 		const adjusted = getMinimumBillablePowerupAmount(

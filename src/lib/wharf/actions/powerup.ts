@@ -5,6 +5,7 @@ import { ANTELOPE_SYSTEM_TOKEN } from 'src/config';
 
 const MAX_BILLABLE_POWERUP_ADJUSTMENTS = 32;
 const POWERUP_FRACTION_DENOMINATOR = 1_000_000_000_000_000n;
+const UNCAPPED_POWERUP_WHOLE_UNITS = '999999999999';
 
 export interface AccountRequiredResources {
 	cpuRequired: boolean;
@@ -36,6 +37,17 @@ function assetPrecision(asset: Asset): number {
 function roundUpAssetValue(value: number, precision: number): number {
 	const units = Math.pow(10, precision);
 	return Math.ceil(value * units) / units;
+}
+
+export function getUncappedPowerupMaxPayment(systemToken = ANTELOPE_SYSTEM_TOKEN): Asset {
+	const [precisionText, symbol] = systemToken.split(',');
+	const precision = Number(precisionText);
+	if (!Number.isInteger(precision) || precision < 0 || !symbol) {
+		throw new Error(`Invalid system token configuration: ${systemToken}`);
+	}
+
+	const fraction = precision > 0 ? `.${'9'.repeat(precision)}` : '';
+	return Asset.from(`${UNCAPPED_POWERUP_WHOLE_UNITS}${fraction} ${symbol}`);
 }
 
 function utilizationIncreaseForFraction(weight: Int64, frac: Int64): number {

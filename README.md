@@ -79,7 +79,7 @@ The `rpcli` allows you to define which accounts will be automatically managed.
 To add an account, use the `rpcli manager add` command:
 
 ```
-rpcli manager add <account> <min_ms> <min_kb> <inc_ms> <inc_kb> <max_fee> [min_ram_kb] [inc_ram_kb]
+rpcli manager add <account> <min_ms> <min_kb> <inc_ms> <inc_kb> [legacy_max_fee] [min_ram_kb] [inc_ram_kb]
 ```
 
 The values required for this command are as follows:
@@ -89,22 +89,24 @@ The values required for this command are as follows:
 - `min_kb` the minimum amount of NET (in kilobytes) the account should have available
 - `inc_ms` the amount of CPU (in milliseconds) to powerup when the minimum is not met
 - `inc_kb` the amount of NET (in kilobytes) to powerup when the minimum is not met
-- `max_fee` the maximum fee to pay for the powerup action
+- `legacy_max_fee` is retained only for backwards compatibility; managed account powerups are uncapped and use the actual PowerUp cost
 - `min_ram_kb` the optional minimum amount of free RAM (in kilobytes) the account should have available
 - `inc_ram_kb` the optional amount of RAM (in kilobytes) to buy when the RAM minimum is not met
 
-So for example, to ensure the `ihasnocpunet` account always has 10ms and 10kb resources available, and setting the maximum fee to `0.5000 TOKEN`, the command would be:
+So for example, to ensure the `ihasnocpunet` account always has 10ms and 10kb resources available:
 
 ```
-rpcli manager add ihasnocpunet 10 10 10 10 0.5
+rpcli manager add ihasnocpunet 10 10 10 10
 ```
+
+Managed-account CPU/NET powerups do not have an application-level fee cap. The manager signs the powerup with an effectively unlimited `max_payment`, so the only hard limit is the manager account's available token balance.
 
 By default, managed accounts keep `100 KB` of free RAM and buy `100 KB` when they fall below that threshold. These defaults can be changed with `MANAGED_ACCOUNT_RAM_MINIMUM_KB` and `MANAGED_ACCOUNT_RAM_INCREMENT_KB`.
 
 To keep 20kb of RAM free and buy another 10kb when that threshold is not met for a specific account:
 
 ```
-rpcli manager add ihasnocpunet 10 10 10 10 0.5 20 10
+rpcli manager add ihasnocpunet 10 10 10 10 0 20 10
 ```
 
 Managed account RAM purchases are opt-in and only available on Jungle 4 for now. Set `ENABLE_MANAGED_ACCOUNT_RAM=true` to allow RAM purchases. Set a managed account's RAM values to `0 0` if that account should be excluded from RAM management.
@@ -125,7 +127,7 @@ A list of accounts will be displayed on the command line as follows:
 ┌───┬──────────────┬────────┬────────┬────────┬────────┬──────────┐
 │   │ account      │ min_ms │ min_kb │ inc_ms │ inc_kb │ max_fee  │
 ├───┼──────────────┼────────┼────────┼────────┼────────┼──────────┤
-│ 0 │ ihasnocpunet │ 10     │ 10     │ 10     │ 10     │ 0.5000 A │
+│ 0 │ ihasnocpunet │ 10     │ 10     │ 10     │ 10     │ uncapped │
 └───┴──────────────┴────────┴────────┴────────┴────────┴──────────┘
 ```
 

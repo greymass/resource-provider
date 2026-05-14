@@ -6,7 +6,11 @@ import { v2ManagedAccountType } from '$api/v2/manager/types';
 import { database } from '$lib/db';
 import { AbstractDatabase } from '$lib/db/abstract';
 import * as schema from '$lib/db/schema';
-import { MANAGED_ACCOUNT_RAM_INCREMENT_KB, MANAGED_ACCOUNT_RAM_MINIMUM_KB } from 'src/config';
+import {
+	ANTELOPE_SYSTEM_TOKEN,
+	MANAGED_ACCOUNT_RAM_INCREMENT_KB,
+	MANAGED_ACCOUNT_RAM_MINIMUM_KB
+} from 'src/config';
 
 @Struct.type('managed_account')
 export class ManagedAccount extends Struct {
@@ -23,7 +27,7 @@ export class ManagedAccount extends Struct {
 	@Struct.field(Int64) declare inc_kb: Int64;
 	@Struct.field(Int64) declare inc_ram_kb: Int64;
 
-	// Maximum fee allowed for a single powerup
+	// Legacy compatibility field. Managed-account powerups are uncapped.
 	@Struct.field(Asset) declare max_fee: Asset;
 
 	toJSON(): typeof schema.users.$inferInsert {
@@ -40,15 +44,21 @@ export class ManagedAccount extends Struct {
 	}
 }
 
-export type ManagedAccountType = ManagedAccount | typeof schema.users.$inferInsert;
+type ManagedAccountInsert = Omit<typeof schema.users.$inferInsert, 'max_fee'> & {
+	max_fee?: string;
+};
+
+export type ManagedAccountType = ManagedAccount | ManagedAccountInsert;
 
 export class ManagedAccountDatabase extends AbstractDatabase {
 	async addManagedAccount(data: ManagedAccountType) {
 		const source = data instanceof ManagedAccount ? data.toJSON() : data;
+		const legacyMaxFee = source.max_fee || String(Asset.from(0, ANTELOPE_SYSTEM_TOKEN));
 		const account = ManagedAccount.from({
 			min_ram_kb: MANAGED_ACCOUNT_RAM_MINIMUM_KB,
 			inc_ram_kb: MANAGED_ACCOUNT_RAM_INCREMENT_KB,
-			...source
+			...source,
+			max_fee: legacyMaxFee
 		});
 		return database.insert(this.schema.users).values(account.toJSON()).onConflictDoUpdate({
 			target: this.schema.users.account,

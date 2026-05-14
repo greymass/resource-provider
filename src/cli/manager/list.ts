@@ -11,7 +11,13 @@ export function makeManagerListCommand() {
 			console.table([{ message: 'No managed accounts found in database.' }]);
 			return;
 		}
-		console.table(objectify(accounts));
+		const rows = objectify(accounts) as Array<Record<string, unknown>>;
+		console.table(
+			rows.map((account) => ({
+				...account,
+				max_fee: 'uncapped'
+			}))
+		);
 	});
 	return command;
 }
