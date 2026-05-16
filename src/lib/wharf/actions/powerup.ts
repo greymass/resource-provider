@@ -34,6 +34,15 @@ function assetPrecision(asset: Asset): number {
 	return asset.symbol.precision;
 }
 
+function safeAssetValue(asset: Asset): number | undefined {
+	const units = BigInt(String(asset.units));
+	if (units > BigInt(Number.MAX_SAFE_INTEGER)) {
+		return undefined;
+	}
+
+	return asset.value;
+}
+
 function roundUpAssetValue(value: number, precision: number): number {
 	const units = Math.pow(10, precision);
 	return Math.ceil(value * units) / units;
@@ -243,8 +252,6 @@ export function getPowerupParams(
 	receiver: Name,
 	max_payment: Asset
 ) {
-	const minimumCost = powerup.min_powerup_fee.value;
-
 	if (
 		(requirements.cpuRequired || requirements.netRequired) &&
 		max_payment.units.lt(powerup.min_powerup_fee.units)
@@ -257,6 +264,12 @@ export function getPowerupParams(
 				'.'
 		);
 	}
+
+	const feePrecisionUnit = 1 / Math.pow(10, assetPrecision(powerup.min_powerup_fee));
+	const maxPaymentValue = safeAssetValue(max_payment);
+	const minimumCost = maxPaymentValue
+		? Math.min((powerup.min_powerup_fee.value + feePrecisionUnit) * 2, maxPaymentValue)
+		: (powerup.min_powerup_fee.value + feePrecisionUnit) * 2;
 
 	const { cpu_frac } = getPowerupParamsCPU(ms, powerup, sample, requirements, minimumCost);
 	const { net_frac } = getPowerupParamsNET(kb, powerup, sample, requirements, minimumCost);
