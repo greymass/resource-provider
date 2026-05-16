@@ -245,7 +245,10 @@ export function getPowerupParams(
 ) {
 	const minimumCost = powerup.min_powerup_fee.value;
 
-	if ((requirements.cpuRequired || requirements.netRequired) && max_payment.value < minimumCost) {
+	if (
+		(requirements.cpuRequired || requirements.netRequired) &&
+		max_payment.units.lt(powerup.min_powerup_fee.units)
+	) {
 		throw new Error(
 			'Max payment ' +
 				String(max_payment) +

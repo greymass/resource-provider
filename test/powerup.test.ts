@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-const { Int64 } = await import('@wharfkit/antelope');
-const { Asset } = await import('@wharfkit/antelope');
+const { Asset, Int64, Name } = await import('@wharfkit/antelope');
 
 function makeJungle4NetResource() {
 	return {
@@ -144,5 +143,33 @@ describe('powerup billable precision', () => {
 
 		expect(result.net_frac.gt(Int64.zero)).toBeTrue();
 		expect(result.net_cost.value).toBe(0.1);
+	});
+
+	it('accepts uncapped max payment without converting it to a number', async () => {
+		const { getPowerupParams, getUncappedPowerupMaxPayment } = await import(
+			'../src/lib/wharf/actions/powerup'
+		);
+		const cpu = {
+			...makeJungle4NetResource(),
+			frac_by_ms(_sample: unknown, milliseconds: number) {
+				return Int64.from(Math.floor(milliseconds * 6551.5));
+			},
+			price_per_ms() {
+				throw new Error('price_per_ms should not be used for minimum CPU search');
+			}
+		};
+		const result = getPowerupParams(
+			Int64.from(10),
+			Int64.from(0),
+			{ min_powerup_fee: Asset.from('0.1000 EOS'), cpu, net: makeJungle4NetResource() } as never,
+			{} as never,
+			{ cpuRequired: true, netRequired: false },
+			Name.from('rsfui4ahy.gm'),
+			Name.from('osqj2xldy.gm'),
+			getUncappedPowerupMaxPayment('4,EOS')
+		);
+
+		expect(result.cpu_frac.gt(Int64.zero)).toBeTrue();
+		expect(String(result.max_payment)).toBe('999999999999.9999 EOS');
 	});
 });
