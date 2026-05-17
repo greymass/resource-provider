@@ -1,4 +1,5 @@
 import { Database } from 'bun:sqlite';
+
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 
 import { generalLog } from '$lib/logger';
