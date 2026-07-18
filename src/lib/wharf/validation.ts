@@ -1,11 +1,7 @@
 import { Name, PermissionLevel } from '@wharfkit/antelope';
 import type { API, PermissionLevelType } from '@wharfkit/antelope';
 
-import {
-	PROVIDER_MIN_CPU_US,
-	PROVIDER_MIN_NET_BYTES,
-	PROVIDER_REQUIRE_RESOURCE_NEED
-} from 'src/config';
+import { getBool, getInt } from '$lib/settings';
 
 export function resolvePermissionLevel(signer: PermissionLevelType): PermissionLevel {
 	if (!signer.actor || String(Name.from(signer.actor)) !== signer.actor) {
@@ -21,7 +17,7 @@ export function resolvePermissionLevel(signer: PermissionLevelType): PermissionL
 }
 
 export function checkResourceSufficiency(accountData: API.v1.AccountObject): void {
-	if (!PROVIDER_REQUIRE_RESOURCE_NEED) {
+	if (!getBool('provider.require_resource_need')) {
 		return;
 	}
 
@@ -32,7 +28,10 @@ export function checkResourceSufficiency(accountData: API.v1.AccountObject): voi
 		accountData.net_limit.max.subtracting(accountData.net_limit.current_used)
 	);
 
-	if (cpuAvailable > PROVIDER_MIN_CPU_US && netAvailable > PROVIDER_MIN_NET_BYTES) {
+	if (
+		cpuAvailable > getInt('provider.min_cpu_us') &&
+		netAvailable > getInt('provider.min_net_bytes')
+	) {
 		throw new Error('Network resources not required by this account.');
 	}
 }

@@ -5,7 +5,12 @@ import { Elysia } from 'elysia';
 import { BunAdapter } from 'elysia/adapter/bun';
 
 import { generalLog } from '$lib/logger';
-import { ENABLE_RESOURCE_MANAGER, ENABLE_RESOURCE_PROVIDER, SERVICE_HTTP_PORT } from 'src/config';
+import {
+	ENABLE_ADMIN_API,
+	ENABLE_RESOURCE_MANAGER,
+	ENABLE_RESOURCE_PROVIDER,
+	SERVICE_HTTP_PORT
+} from 'src/config';
 
 const port = SERVICE_HTTP_PORT || 3000;
 
@@ -48,6 +53,15 @@ const swaggerConfig: ElysiaSwaggerConfig = {
 								'Resource Management endpoints for resource automation (requires Bearer token)'
 						}
 					]
+				: []),
+			...(ENABLE_ADMIN_API
+				? [
+						{
+							name: 'Admin',
+							description:
+								'Administrative API for managing policy, settings, accounts, and tokens (requires Bearer token)'
+						}
+					]
 				: [])
 		]
 	},
@@ -59,27 +73,53 @@ const swaggerConfig: ElysiaSwaggerConfig = {
 let app: Elysia | null = null;
 let started = false;
 
+function usesTypedValidationEnvelope(request: Request): boolean {
+	const path = new URL(request.url).pathname;
+	return (
+		path === '/v2/admin' ||
+		path.startsWith('/v2/admin/') ||
+		path === '/v2/resource/manager' ||
+		path.startsWith('/v2/resource/manager/')
+	);
+}
+
+export function typedValidationResponse(error: unknown, set: { status?: number | string }) {
+	set.status = 422;
+	return {
+		code: 422 as const,
+		message: error instanceof Error ? error.message : String(error)
+	};
+}
+
+export function withGlobalErrorHandling<const App extends Elysia>(instance: App) {
+	return instance.onError((context) => {
+		switch (context.code) {
+			case 'VALIDATION':
+				if (usesTypedValidationEnvelope(context.request)) {
+					return typedValidationResponse(context.error, context.set);
+				}
+				return {
+					message: String(context.error),
+					all: context.error.all
+				};
+			default:
+				return {
+					message: String(context.error)
+				};
+		}
+	});
+}
+
 export function getApp(): Elysia {
 	if (!app) {
 		app = new Elysia({
 			adapter: BunAdapter,
-			aot: true
+			aot: true,
+			serve: { reusePort: false }
 		});
 		app.use(cors({ origin: true }));
 		app.use(swagger(swaggerConfig));
-		app.onError((context) => {
-			switch (context.code) {
-				case 'VALIDATION':
-					return {
-						message: String(context.error),
-						all: context.error.all
-					};
-				default:
-					return {
-						message: String(context.error)
-					};
-			}
-		});
+		withGlobalErrorHandling(app);
 	}
 	return app;
 }

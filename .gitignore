@@ -6,3 +6,5 @@
 *.log
 *.sqlite
 *.db
+/tsconfig.tsbuildinfo
+/.claude/

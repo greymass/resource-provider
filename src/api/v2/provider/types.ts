@@ -139,17 +139,16 @@ export const v2ProviderRequestTransaction = {
 
 export const v2ProviderUsageResponse = t.Object({
 	account: t.String(),
-	usage: t.Object({
-		cpu: t.Number(),
-		net: t.Number()
-	}),
-	quota: t.Object({
-		cpu: t.Number(),
-		net: t.Number()
-	}),
-	window: t.Object({
-		hours: t.Number()
-	})
+	window: t.Object({ hours: t.Number() }),
+	buckets: t.Array(
+		t.Object({
+			bucket: t.String(),
+			usage: t.Object({ cpu: t.Number(), net: t.Number() }),
+			limit: t.Object({ cpu: t.Number(), net: t.Number() }),
+			restricted: t.Boolean(),
+			eligible: t.Boolean()
+		})
+	)
 });
 
 export const v2ProviderUsage = {

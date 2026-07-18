@@ -2,10 +2,11 @@ import { Asset } from '@wharfkit/antelope';
 import { PowerUpState } from '@wharfkit/resources';
 
 import { providerLog } from '$lib/logger';
+import { getString } from '$lib/settings';
 import { objectify } from '$lib/utils';
 import type { ResourceCosts, ResourceNeeds } from '$lib/wharf/estimation';
 import { getResourcesClient } from '$lib/wharf/resources';
-import { ANTELOPE_SYSTEM_TOKEN, PROVIDER_PAID_TRANSACTIONS_MINIMUM_FEE } from 'src/config';
+import { ANTELOPE_SYSTEM_TOKEN } from 'src/config';
 
 export async function calculateCosts(resourceNeeds: ResourceNeeds): Promise<ResourceCosts> {
 	const resourcesClient = getResourcesClient();
@@ -55,8 +56,9 @@ export function calculateTotalFee(costs: ResourceCosts): Asset {
 	total.units.add(costs.net.units);
 	total.units.add(costs.ram.units);
 
-	if (PROVIDER_PAID_TRANSACTIONS_MINIMUM_FEE) {
-		const minimumFee = Asset.from(PROVIDER_PAID_TRANSACTIONS_MINIMUM_FEE);
+	const minimumFeeSetting = getString('provider.paid_transactions.minimum_fee');
+	if (minimumFeeSetting) {
+		const minimumFee = Asset.from(minimumFeeSetting);
 		if (total.units.lte(minimumFee.units)) {
 			return minimumFee;
 		}

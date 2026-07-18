@@ -8,7 +8,7 @@ VERSION := $(shell git describe --tags --always --abbrev=0)
 RELEASE_NAME=rpcli
 
 build: deps
-	bun build src/index.ts --compile --minify --sourcemap --outfile dist/$(RELEASE_NAME)
+	bun build src/index.ts --compile --minify-whitespace --minify-syntax --sourcemap --outfile dist/$(RELEASE_NAME)
 
 .PHONY: dev
 dev: deps
@@ -55,29 +55,29 @@ format: deps
 	bun run format
 
 dist/$(RELEASE_NAME)-linux-x64:
-	bun build --target=bun-linux-x64 --compile --minify --sourcemap src/index.ts --outfile dist/$(RELEASE_NAME)-linux-x64
+	bun build --target=bun-linux-x64 --compile --minify-whitespace --minify-syntax --sourcemap src/index.ts --outfile dist/$(RELEASE_NAME)-linux-x64
 
 dist/$(RELEASE_NAME)-linux-arm64:
-	bun build --target=bun-linux-arm64 --compile --minify --sourcemap src/index.ts --outfile dist/$(RELEASE_NAME)-linux-arm64
+	bun build --target=bun-linux-arm64 --compile --minify-whitespace --minify-syntax --sourcemap src/index.ts --outfile dist/$(RELEASE_NAME)-linux-arm64
 
 # dist/$(RELEASE_NAME)-windows-x64:
-# 	bun build --target=bun-windows-x64 --compile --minify --sourcemap src/index.ts --outfile dist/$(RELEASE_NAME)-windows-x64
+# 	bun build --target=bun-windows-x64 --compile --minify-whitespace --minify-syntax --sourcemap src/index.ts --outfile dist/$(RELEASE_NAME)-windows-x64
 
 # dist/$(RELEASE_NAME)-windows-arm64:
 # 	# TODO: Figure out why this isn't working
-# 	# bun build --target=bun-windows-arm64 --compile --minify --sourcemap src/index.ts --outfile dist/$(RELEASE_NAME)-windows-arm64
+# 	# bun build --target=bun-windows-arm64 --compile --minify-whitespace --minify-syntax --sourcemap src/index.ts --outfile dist/$(RELEASE_NAME)-windows-arm64
 
 # dist/$(RELEASE_NAME)-darwin-x64:
-# 	bun build --target=bun-darwin-x64 --compile --minify --sourcemap src/index.ts --outfile dist/$(RELEASE_NAME)-darwin-x64
+# 	bun build --target=bun-darwin-x64 --compile --minify-whitespace --minify-syntax --sourcemap src/index.ts --outfile dist/$(RELEASE_NAME)-darwin-x64
 
 # dist/$(RELEASE_NAME)-darwin-arm64:
-# 	bun build --target=bun-darwin-arm64 --compile --minify --sourcemap src/index.ts --outfile dist/$(RELEASE_NAME)-darwin-arm64
+# 	bun build --target=bun-darwin-arm64 --compile --minify-whitespace --minify-syntax --sourcemap src/index.ts --outfile dist/$(RELEASE_NAME)-darwin-arm64
 
 dist/$(RELEASE_NAME)-linux-x64-musl:
-	bun build --target=bun-linux-x64-musl --compile --minify --sourcemap src/index.ts --outfile dist/$(RELEASE_NAME)-linux-x64-musl
+	bun build --target=bun-linux-x64-musl --compile --minify-whitespace --minify-syntax --sourcemap src/index.ts --outfile dist/$(RELEASE_NAME)-linux-x64-musl
 
 dist/$(RELEASE_NAME)-linux-arm64-musl:
-	bun build --target=bun-linux-arm64-musl --compile --minify --sourcemap src/index.ts --outfile dist/$(RELEASE_NAME)-linux-arm64-musl
+	bun build --target=bun-linux-arm64-musl --compile --minify-whitespace --minify-syntax --sourcemap src/index.ts --outfile dist/$(RELEASE_NAME)-linux-arm64-musl
 
 release: clean deps dist/$(RELEASE_NAME)-linux-x64 dist/$(RELEASE_NAME)-linux-arm64 dist/$(RELEASE_NAME)-linux-x64-musl dist/$(RELEASE_NAME)-linux-arm64-musl
 	gzip dist/*
@@ -104,4 +104,4 @@ clean/node_modules:
 
 .PHONY: clean/testdb
 clean/testdb:
-	rm -f src/lib/testing.sqlite
+	rm -f testing.sqlite

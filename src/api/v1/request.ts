@@ -5,15 +5,17 @@ import type { Static } from 'elysia';
 
 import { v1ProviderRequestBody } from '$api/v1/types';
 import type { v1ResponseTypes } from '$api/v1/types';
+import { accessDatabase } from '$lib/db/models/provider/access';
 import { usageDatabase } from '$lib/db/models/provider/usage';
 import { providerLog } from '$lib/logger';
+import { loadPolicy, resolveFreeGrant } from '$lib/rules';
+import { getString } from '$lib/settings';
 import { addFeeAction } from '$lib/wharf/actions/fee';
 import { addNoopAction } from '$lib/wharf/actions/noop';
 import { addBuyRAMBytesAction } from '$lib/wharf/actions/ram';
 import { getClient } from '$lib/wharf/client';
 import { getStaleContract, invalidateContractCache } from '$lib/wharf/contracts';
 import { RAM_SAFETY_BUFFER_BYTES, computeResourceNeeds } from '$lib/wharf/estimation';
-import type { ResourceNeeds } from '$lib/wharf/estimation';
 import { calculateCosts, calculateTotalFee } from '$lib/wharf/pricing';
 import { getProviderSession, signTransaction } from '$lib/wharf/session';
 import { createSigningRequest, resolveTransaction } from '$lib/wharf/signing-request';
@@ -25,12 +27,7 @@ import {
 import {
 	ANTELOPE_SYSTEM_TOKEN,
 	ENABLE_FREE_TRANSACTIONS,
-	ENABLE_PAID_TRANSACTIONS,
-	PROVIDER_FREE_TRANSACTIONS_LIMIT_KB,
-	PROVIDER_FREE_TRANSACTIONS_LIMIT_MS,
-	PROVIDER_PAID_TRANSACTIONS_FEE_DEFAULT_REF,
-	PROVIDER_PAID_TRANSACTIONS_FEE_MEMO,
-	PROVIDER_PAID_TRANSACTIONS_FEE_RECIPIENT
+	ENABLE_PAID_TRANSACTIONS
 } from 'src/config';
 
 function validateRequest(cosigner: PermissionLevel, request: SigningRequest): void {
@@ -46,31 +43,10 @@ function validateRequest(cosigner: PermissionLevel, request: SigningRequest): vo
 	) {
 		throw new Error('Actions cannot contain the authority of the cosigner.');
 	}
-}
 
-async function checkQuota(account: string, resourceNeeds: ResourceNeeds): Promise<boolean> {
-	if (!ENABLE_FREE_TRANSACTIONS) {
-		return false;
+	if (actions.some((action) => action.authorization.length === 0)) {
+		throw new Error('Actions must contain at least one authorization.');
 	}
-
-	const currentUsage = await usageDatabase.getUsage(account);
-	const cpuLimit = Number(PROVIDER_FREE_TRANSACTIONS_LIMIT_MS) * 1000;
-	const netLimit = Number(PROVIDER_FREE_TRANSACTIONS_LIMIT_KB) * 1000;
-
-	const projectedCpu = currentUsage.cpu + resourceNeeds.cpu;
-	const projectedNet = currentUsage.net + resourceNeeds.net;
-
-	const withinQuota = projectedCpu <= cpuLimit && projectedNet <= netLimit;
-
-	providerLog.debug('Quota check', {
-		account,
-		currentUsage,
-		resourceNeeds,
-		limits: { cpu: cpuLimit, net: netLimit },
-		withinQuota
-	});
-
-	return withinQuota;
 }
 
 async function processRequest(
@@ -79,19 +55,33 @@ async function processRequest(
 	cosigner: PermissionLevel,
 	ref?: string
 ): Promise<v1ResponseTypes> {
+	let transaction = await resolveTransaction(request, requester);
+	providerLog.debug('Transaction resolved', { actions: transaction.actions.length });
+
+	const userActions = transaction.actions;
+	if (userActions.length === 0 || userActions[0].authorization.length === 0) {
+		throw new Error('Transaction has no billable actions.');
+	}
+	const sufficiencySubject = userActions[0].authorization[0].actor;
+
 	let accountData: API.v1.AccountObject;
 	try {
-		accountData = await getClient().v1.chain.get_account(requester.actor);
+		accountData = await getClient().v1.chain.get_account(sufficiencySubject);
 	} catch {
-		throw new Error(`Unable to retrieve account data for ${requester.actor}.`);
+		throw new Error(`Unable to retrieve account data for ${sufficiencySubject}.`);
 	}
-	providerLog.debug('Account data retrieved', { account: String(requester.actor) });
-
 	checkResourceSufficiency(accountData);
 	providerLog.debug('Resource sufficiency check passed');
 
-	let transaction = await resolveTransaction(request, requester);
-	providerLog.debug('Transaction resolved', { actions: transaction.actions.length });
+	const matchActions = userActions.map((action) => ({
+		account: String(action.account),
+		name: String(action.name)
+	}));
+	const billed = [
+		...new Set(
+			userActions.flatMap((action) => action.authorization.map((auth) => String(auth.actor)))
+		)
+	];
 
 	transaction = await addNoopAction(transaction, cosigner);
 	providerLog.debug('Noop action added');
@@ -104,21 +94,29 @@ async function processRequest(
 		transaction = await addBuyRAMBytesAction(transaction, requester, ramBytes);
 	}
 
-	const withinQuota = await checkQuota(String(requester.actor), resourceNeeds);
+	const grant = ENABLE_FREE_TRANSACTIONS
+		? resolveFreeGrant(
+				loadPolicy(),
+				matchActions,
+				{ cpu: resourceNeeds.cpu, net: resourceNeeds.net },
+				billed,
+				(account, bucket) => usageDatabase.getBucketUsage(account, bucket),
+				(account, bucket) =>
+					!accessDatabase.isRestricted(bucket) || accessDatabase.has(bucket, account)
+			)
+		: null;
 
-	if (withinQuota) {
-		providerLog.debug('Within free quota, signing transaction');
+	if (grant) {
+		providerLog.debug('Free grant resolved', { grant });
 		const providerSignature = await signTransaction(transaction);
-		await usageDatabase.incrementUsage(
-			String(requester.actor),
-			resourceNeeds.cpu,
-			resourceNeeds.net
-		);
-
+		for (const { account, bucket } of grant) {
+			await usageDatabase.incrementUsage(account, resourceNeeds.cpu, resourceNeeds.net, bucket);
+		}
 		providerLog.info('Provided resources (free)', {
 			account: String(requester.actor),
 			cpu: resourceNeeds.cpu,
-			net: resourceNeeds.net
+			net: resourceNeeds.net,
+			buckets: grant
 		});
 		return {
 			code: 200,
@@ -148,15 +146,14 @@ async function processRequest(
 	});
 	providerLog.debug('Fee calculated', { fee: String(totalFee), providerFee: String(providerFee) });
 
-	const feeRef = ref || PROVIDER_PAID_TRANSACTIONS_FEE_DEFAULT_REF;
-	const feeMemo = feeRef
-		? `${PROVIDER_PAID_TRANSACTIONS_FEE_MEMO} | ref=${feeRef}`
-		: PROVIDER_PAID_TRANSACTIONS_FEE_MEMO;
+	const feeRef = ref || getString('provider.paid_transactions.fee_default_ref');
+	const feeMemoBase = getString('provider.paid_transactions.fee_memo')!;
+	const feeMemo = feeRef ? `${feeMemoBase} | ref=${feeRef}` : feeMemoBase;
 
 	transaction = await addFeeAction(
 		transaction,
 		requester,
-		PROVIDER_PAID_TRANSACTIONS_FEE_RECIPIENT || cosigner.actor,
+		getString('provider.paid_transactions.fee_recipient') || cosigner.actor,
 		providerFee,
 		feeMemo
 	);

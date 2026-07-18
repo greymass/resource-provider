@@ -1,12 +1,11 @@
 import { Int64 } from '@wharfkit/antelope';
 import { Session } from '@wharfkit/session';
-import { Static } from 'elysia';
 
 import { ManagerContext } from '../context';
 
-import { v2ManagedAccountType } from '$api/v2/manager/types';
 import { ManagedAccount } from '$lib/db/models/manager/account';
 import { managerLog } from '$lib/logger';
+import type { ManagedAccountDTO } from '$lib/managed-accounts';
 import { objectify } from '$lib/utils';
 import { getPowerupParams } from '$lib/wharf/actions/powerup';
 import { getClient } from '$lib/wharf/client';
@@ -16,7 +15,7 @@ import { ANTELOPE_SYSTEM_CONTRACT } from 'src/config';
 
 export async function manageAccountResources(
 	manager: Session,
-	account: Static<typeof v2ManagedAccountType>,
+	account: ManagedAccountDTO,
 	context: ManagerContext
 ) {
 	try {

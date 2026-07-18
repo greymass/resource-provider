@@ -32,9 +32,21 @@ Alternatively, you can clone down this repository and run `make build` to create
 
 This application requires an `.env` file in the same folder to control many of its settings.
 
-Running `rpcli config` will generate a basic `.env` file in the folder you run it from. This file will need to be edited to configure the blockchain, accounts, and services involved.
+Running `rpcli env init` will generate a basic `.env` file in the folder you run it from. This file will need to be edited to configure the blockchain, accounts, and services involved.
 
 Alternatively, the `.env.example` file can be copied directly to the `.env` and edited.
+
+Configuration lives in two places:
+
+- **`.env` file** — deployment shape: the blockchain, accounts, keys, which services are enabled, ports, and logging.
+- **Database settings** — provider policy: limits, fees, and thresholds, managed with the `rpcli config` commands. Changes take effect in a running service within a few seconds; no restart required.
+
+```
+rpcli config list                # show all settings, values, and defaults
+rpcli config get <key>           # show one setting
+rpcli config set <key> <value>   # change a setting (validated)
+rpcli config unset <key>         # revert a setting to its default
+```
 
 ## Setup as Resource Mananger
 
@@ -147,9 +159,53 @@ ENABLE_PAID_TRANSACTIONS=true
 
 If no `PROVIDER_ACCOUNT_PRIVATEKEY` is set, one will be generated on first run.
 
-Free cosigning requires `PROVIDER_FREE_TRANSACTIONS_LIMIT_MS` and `PROVIDER_FREE_TRANSACTIONS_LIMIT_KB` (the per-account, per-window CPU/NET limits). Paid cosigning is on by default and appends a fee transfer to the transaction; see `.env.example` for fee, recipient, and memo configuration.
+### Provider Policy Settings
 
-See `.env.example` for the full list of provider options, including resource-sufficiency gating (`PROVIDER_REQUIRE_RESOURCE_NEED`), the usage window (`PROVIDER_USAGE_WINDOW_HOURS`), and the light account cosigning feature (`ENABLE_LIGHTACCOUNT_PROVIDER`).
+Provider policy is stored in the database and managed with `rpcli config` (see [Configuration](#configuration)). The service refuses to start if a setting required by an enabled feature is unset, and the startup error names the exact command to run.
+
+**Free cosigning** (`ENABLE_FREE_TRANSACTIONS=true`) tracks per-account usage over a rolling window:
+
+| Setting                       | Default | Description                  |
+| ----------------------------- | ------- | ---------------------------- |
+| `provider.usage.window_hours` | 24      | Rolling usage window (hours) |
+
+### Free-tier buckets and rules
+
+Free cosigning routes each transaction into a usage **bucket** based on **rules** that match the transaction's `contract::action`s. Each bucket has its own per-account CPU/NET limits and a fallback priority. Manage them with `rpcli rules`:
+
+    rpcli rules bucket add wildcard 1000 5 10          # a catch-all bucket: 5ms CPU / 10kb NET
+    rpcli rules add wildcard wildcard                  # a rule feeding it
+    rpcli rules allow wildcard '*::*'                  # matching every action
+
+    rpcli rules bucket add shipload 10 100 100         # a generous game bucket
+    rpcli rules add game shipload
+    rpcli rules allow game 'eon.shipload::*'
+    rpcli rules allow game 'nex.shipload::*'
+
+A transaction matches a rule when every action is covered by an `allow`/`require` pattern and every `require` pattern is present. Each authorizing account is billed the full cost against the highest-priority matching bucket it still has room in, spilling to lower-priority buckets when full. Delete the wildcard bucket to cover only specific contracts. The service refuses to start if free transactions are enabled and no bucket exists.
+
+Upgrading from the previous single-limit version: on first start, the old `provider.free_transactions.limit_ms/kb` values are seeded automatically into a `wildcard` bucket.
+
+**Paid cosigning** (`ENABLE_PAID_TRANSACTIONS=true`, the default) appends a fee transfer to the cosigned transaction:
+
+| Setting                                      | Default                | Description                                       |
+| -------------------------------------------- | ---------------------- | ------------------------------------------------- |
+| `provider.paid_transactions.minimum_fee`     | `0.0001 <token>`       | Minimum fee for any paid transaction              |
+| `provider.paid_transactions.fee_recipient`   | cosigner account       | Account that receives fees                        |
+| `provider.paid_transactions.fee_memo`        | `Fuel Transaction Fee` | Memo prefix on the fee transfer                   |
+| `provider.paid_transactions.fee_default_ref` | `teamgreymass`         | Referrer appended to the memo as `\| ref={value}` |
+
+**Resource-need gating** applies to all cosigning modes — accounts that already have sufficient resources are refused:
+
+| Setting                          | Default | Description                                     |
+| -------------------------------- | ------- | ----------------------------------------------- |
+| `provider.require_resource_need` | `true`  | Only cosign for accounts that need resources    |
+| `provider.min_cpu_us`            | 50000   | CPU (µs) below which an account is "in need"    |
+| `provider.min_net_bytes`         | 50000   | NET (bytes) below which an account is "in need" |
+
+**Free powerups** (`ENABLE_FREE_POWERUP=true`) require `provider.free_powerup.ms`, `provider.free_powerup.kb`, `provider.free_powerup.uses`, and `provider.free_powerup.max_payment`.
+
+See `.env.example` for the remaining environment options, such as the light account cosigning feature (`ENABLE_LIGHTACCOUNT_PROVIDER`).
 
 ### Account Permission Setup
 
@@ -185,7 +241,7 @@ rpcli start manager
 ## Usage and Database Commands
 
 ```
-rpcli usage <account>   # Show cosigning usage for an account (within PROVIDER_USAGE_WINDOW_HOURS)
+rpcli usage <account>   # Show cosigning usage for an account (within provider.usage.window_hours)
 rpcli reset             # Clear all usage-tracking records
 rpcli vacuum            # Force SQLite VACUUM on the database
 ```

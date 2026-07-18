@@ -1,24 +1,20 @@
 import { t } from 'elysia';
 
-import { v2GenericResponse } from '$lib/types';
+import { apiNotFound, apiSuccess, apiUnauthorized, apiUnprocessable } from '$lib/api-types';
+import {
+	managedAccountAddBody,
+	managedAccountRemoveBody,
+	managedAccountSchema
+} from '$lib/managed-accounts';
 
 const tags = ['Resource Manager'];
 
-export const v2ManagedAccountType = t.Object({
-	account: t.String(),
-	min_ms: t.Integer(),
-	min_kb: t.Integer(),
-	inc_ms: t.Integer(),
-	inc_kb: t.Integer(),
-	max_fee: t.String()
-});
+export const v2ManagedAccountType = managedAccountSchema;
 
-export const v2ManagerResponseSuccess = t.Object(v2GenericResponse.properties, {
-	description: 'Successful response from the manager service.'
-});
+export const v2ManagerResponseSuccess = apiSuccess;
 
 export const v2ManagerList = {
-	response: t.Array(v2ManagedAccountType),
+	response: { 200: t.Array(v2ManagedAccountType), 401: apiUnauthorized },
 	detail: {
 		summary: 'List Accounts',
 		description: 'List the accounts currently managed by this service.',
@@ -26,18 +22,7 @@ export const v2ManagerList = {
 	}
 };
 
-export const v2ManagerAddBody = t.Object(v2ManagedAccountType.properties, {
-	examples: [
-		{
-			account: 'test.gm',
-			min_ms: 10,
-			min_kb: 10,
-			inc_ms: 5,
-			inc_kb: 5,
-			max_fee: '0.1000 A'
-		}
-	]
-});
+export const v2ManagerAddBody = managedAccountAddBody;
 
 export const v2ManagerAdd = {
 	body: v2ManagerAddBody,
@@ -47,22 +32,13 @@ export const v2ManagerAdd = {
 		tags
 	},
 	response: {
-		200: v2ManagerResponseSuccess
+		200: v2ManagerResponseSuccess,
+		401: apiUnauthorized,
+		422: apiUnprocessable
 	}
 };
 
-export const v2ManagerRemoveBody = t.Object(
-	{
-		account: t.String()
-	},
-	{
-		examples: [
-			{
-				account: 'test.gm'
-			}
-		]
-	}
-);
+export const v2ManagerRemoveBody = managedAccountRemoveBody;
 
 export const v2ManagerRemove = {
 	body: v2ManagerRemoveBody,
@@ -72,6 +48,9 @@ export const v2ManagerRemove = {
 		tags
 	},
 	response: {
-		200: v2ManagerResponseSuccess
+		200: v2ManagerResponseSuccess,
+		401: apiUnauthorized,
+		404: apiNotFound,
+		422: apiUnprocessable
 	}
 };

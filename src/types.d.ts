@@ -9,6 +9,5 @@ declare module 'bun' {
 		PROVIDER_ACCOUNT_NAME: string;
 		PROVIDER_ACCOUNT_PERMISSION?: string;
 		PROVIDER_ACCOUNT_PRIVATEKEY?: string;
-		PROVIDER_FREE_POWERUP_MAX_PAYMENT: number;
 	}
 }

@@ -26,8 +26,12 @@ export async function validateProviderAccount(): Promise<boolean> {
 	const configuredPublicKey = PrivateKey.from(session.walletPlugin.data.privateKey).toPublic();
 	const keyMatch = permission.required_auth.keys.some((k) => k.key.equals(configuredPublicKey));
 	if (!keyMatch) {
+		const onChainKeys = permission.required_auth.keys.map((k) => String(k.key)).join(', ');
 		providerLog.error(
-			`Provider private key does not match any key on the "${session.permission}" permission. The configured public key is ${configuredPublicKey}. Run "provider setup" to update the permission.`
+			`Provider account "${session.actor}": the configured private key does not match any key on its "${session.permission}" permission. ` +
+				`Public key derived from the configured private key: ${configuredPublicKey}. ` +
+				`Key(s) currently on the "${session.permission}" permission: ${onChainKeys || 'none'}. ` +
+				`Run "provider setup" to update the permission.`
 		);
 		return false;
 	}
@@ -38,7 +42,7 @@ export async function validateProviderAccount(): Promise<boolean> {
 		);
 		if (!noopLinked) {
 			providerLog.error(
-				`Provider permission "${session.permission}" is not linked to ${ANTELOPE_NOOP_CONTRACT}::noop. Run "provider setup" to configure the account.`
+				`Provider account "${session.actor}": permission "${session.permission}" is not linked to ${ANTELOPE_NOOP_CONTRACT}::noop. Run "provider setup" to configure the account.`
 			);
 			return false;
 		}
@@ -50,7 +54,7 @@ export async function validateProviderAccount(): Promise<boolean> {
 		);
 		if (!authkeyLinked) {
 			providerLog.error(
-				`Provider permission "${session.permission}" is not linked to ${LIGHTACCOUNT_CONTRACT}::authkey. Run "provider setup" to configure the account.`
+				`Provider account "${session.actor}": permission "${session.permission}" is not linked to ${LIGHTACCOUNT_CONTRACT}::authkey. Run "provider setup" to configure the account.`
 			);
 			return false;
 		}

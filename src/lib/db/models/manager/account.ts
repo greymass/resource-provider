@@ -1,8 +1,6 @@
 import { Asset, Int64, Name, NameType, Struct } from '@wharfkit/antelope';
 import { eq } from 'drizzle-orm';
-import { Static } from 'elysia';
 
-import { v2ManagedAccountType } from '$api/v2/manager/types';
 import { database } from '$lib/db';
 import { AbstractDatabase } from '$lib/db/abstract';
 import * as schema from '$lib/db/schema';
@@ -46,11 +44,16 @@ export class ManagedAccountDatabase extends AbstractDatabase {
 		});
 	}
 
-	async removeManagedAccount(account: NameType) {
-		return database.delete(this.schema.users).where(eq(this.schema.users.account, String(account)));
+	async removeManagedAccount(account: NameType): Promise<boolean> {
+		const deleted = database
+			.delete(this.schema.users)
+			.where(eq(this.schema.users.account, String(account)))
+			.returning({ account: this.schema.users.account })
+			.get();
+		return deleted !== undefined;
 	}
 
-	async getManagedAccounts(): Promise<Array<Static<typeof v2ManagedAccountType>>> {
+	async getManagedAccounts(): Promise<Array<typeof schema.users.$inferSelect>> {
 		return database.select().from(this.schema.users);
 	}
 }

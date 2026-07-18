@@ -1,25 +1,32 @@
+import { accessDatabase } from '$lib/db/models/provider/access';
+import { policyDatabase } from '$lib/db/models/provider/policy';
 import { usageDatabase } from '$lib/db/models/provider/usage';
-import {
-	PROVIDER_FREE_TRANSACTIONS_LIMIT_KB,
-	PROVIDER_FREE_TRANSACTIONS_LIMIT_MS,
-	PROVIDER_USAGE_WINDOW_HOURS
-} from 'src/config';
+import { getInt } from '$lib/settings';
 
-export async function usage({ params }: { params: { account: string } }) {
-	const currentUsage = await usageDatabase.getUsage(params.account);
+export async function usage({
+	params,
+	set
+}: {
+	params: { account: string };
+	set: { headers: Record<string, string | number> };
+}) {
+	set.headers['cache-control'] = 'no-store';
+	const byBucket = usageDatabase.getUsageByBucket(params.account);
+	const buckets = policyDatabase.listBuckets().map((b) => {
+		const used = byBucket.find((u) => u.bucket === b.name);
+		const restricted = accessDatabase.isRestricted(b.name);
+		return {
+			bucket: b.name,
+			usage: { cpu: used?.cpu ?? 0, net: used?.net ?? 0 },
+			limit: { cpu: b.limit_ms * 1000, net: b.limit_kb * 1000 },
+			restricted,
+			eligible: !restricted || accessDatabase.has(b.name, params.account)
+		};
+	});
 
 	return {
 		account: params.account,
-		usage: {
-			cpu: currentUsage.cpu,
-			net: currentUsage.net
-		},
-		quota: {
-			cpu: Number(PROVIDER_FREE_TRANSACTIONS_LIMIT_MS) * 1000,
-			net: Number(PROVIDER_FREE_TRANSACTIONS_LIMIT_KB) * 1000
-		},
-		window: {
-			hours: PROVIDER_USAGE_WINDOW_HOURS
-		}
+		window: { hours: getInt('provider.usage.window_hours') },
+		buckets
 	};
 }

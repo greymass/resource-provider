@@ -61,10 +61,6 @@ if (ENABLE_RESOURCE_PROVIDER) {
 
 // Feature: Resource Provider API - Allow direct free account powerup
 export const ENABLE_FREE_POWERUP = isENVTrue(process.env.ENABLE_FREE_POWERUP ?? 'false');
-export const PROVIDER_FREE_POWERUP_KB = process.env.PROVIDER_FREE_POWERUP_KB;
-export const PROVIDER_FREE_POWERUP_MAX_PAYMENT = process.env.PROVIDER_FREE_POWERUP_MAX_PAYMENT;
-export const PROVIDER_FREE_POWERUP_MS = process.env.PROVIDER_FREE_POWERUP_MS;
-export const PROVIDER_FREE_POWERUP_USES = process.env.PROVIDER_FREE_POWERUP_USES;
 
 if (ENABLE_FREE_POWERUP) {
 	if (!ENABLE_RESOURCE_PROVIDER) {
@@ -72,32 +68,10 @@ if (ENABLE_FREE_POWERUP) {
 			'If ENABLE_FREE_POWERUP is set to true, ENABLE_RESOURCE_PROVIDER must also be set to true.'
 		);
 	}
-	if (!PROVIDER_FREE_POWERUP_KB) {
-		throw new Error(
-			'If ENABLE_FREE_POWERUP is set to true, PROVIDER_FREE_POWERUP_KB must also be defined.'
-		);
-	}
-	if (!PROVIDER_FREE_POWERUP_MAX_PAYMENT) {
-		throw new Error(
-			'If ENABLE_FREE_POWERUP is set to true, PROVIDER_FREE_POWERUP_MAX_PAYMENT must also be defined.'
-		);
-	}
-	if (!PROVIDER_FREE_POWERUP_MS) {
-		throw new Error(
-			'If ENABLE_FREE_POWERUP is set to true, PROVIDER_FREE_POWERUP_MS must also be defined.'
-		);
-	}
-	if (!PROVIDER_FREE_POWERUP_USES) {
-		throw new Error(
-			'If ENABLE_FREE_POWERUP is set to true, PROVIDER_FREE_POWERUP_USES must also be defined.'
-		);
-	}
 }
 
 // Feature: Resource Provider API - Cosign transactions to provide free resources
 export const ENABLE_FREE_TRANSACTIONS = isENVTrue(process.env.ENABLE_FREE_TRANSACTIONS ?? 'false');
-export const PROVIDER_FREE_TRANSACTIONS_LIMIT_MS = process.env.PROVIDER_FREE_TRANSACTIONS_LIMIT_MS;
-export const PROVIDER_FREE_TRANSACTIONS_LIMIT_KB = process.env.PROVIDER_FREE_TRANSACTIONS_LIMIT_KB;
 
 if (ENABLE_FREE_TRANSACTIONS) {
 	if (!ENABLE_RESOURCE_PROVIDER) {
@@ -105,50 +79,19 @@ if (ENABLE_FREE_TRANSACTIONS) {
 			'If ENABLE_FREE_TRANSACTIONS is set to true, ENABLE_RESOURCE_PROVIDER must also be set to true.'
 		);
 	}
-	if (!PROVIDER_FREE_TRANSACTIONS_LIMIT_MS) {
-		throw new Error(
-			'If ENABLE_FREE_TRANSACTIONS is set to true, PROVIDER_FREE_TRANSACTIONS_LIMIT_MS must also be defined.'
-		);
-	}
-	if (!PROVIDER_FREE_TRANSACTIONS_LIMIT_KB) {
-		throw new Error(
-			'If ENABLE_FREE_TRANSACTIONS is set to true, PROVIDER_FREE_TRANSACTIONS_LIMIT_KB must also be defined.'
-		);
-	}
 }
 
 // Feature: Resource Provider API - Usage tracking
-export const PROVIDER_USAGE_WINDOW_HOURS = process.env.PROVIDER_USAGE_WINDOW_HOURS
-	? Number(process.env.PROVIDER_USAGE_WINDOW_HOURS)
-	: 24;
 export const PROVIDER_USAGE_CLEANUP_CRON = process.env.PROVIDER_USAGE_CLEANUP_CRON ?? '0 * * * *';
 
-// Feature: Resource Provider API - Resource sufficiency check
-export const PROVIDER_REQUIRE_RESOURCE_NEED = isENVTrue(
-	process.env.PROVIDER_REQUIRE_RESOURCE_NEED ?? 'true'
-);
-export const PROVIDER_MIN_CPU_US = process.env.PROVIDER_MIN_CPU_US
-	? Number(process.env.PROVIDER_MIN_CPU_US)
-	: 50000;
-export const PROVIDER_MIN_NET_BYTES = process.env.PROVIDER_MIN_NET_BYTES
-	? Number(process.env.PROVIDER_MIN_NET_BYTES)
-	: 50000;
-
 // Feature: Resource Provider API - Cosign transactions to fee-based resources
-export const ENABLE_PAID_TRANSACTIONS = isENVTrue(process.env.ENABLE_PAID_TRANSACTIONS ?? 'true');
-export const PROVIDER_PAID_TRANSACTIONS_MINIMUM_FEE = (() => {
-	const val = process.env.PROVIDER_PAID_TRANSACTIONS_MINIMUM_FEE;
-	const symbol = ANTELOPE_SYSTEM_TOKEN.split(',')[1];
-	if (!val) return `0.0001 ${symbol}`;
-	if (/^\d/.test(val) && !val.includes(' ')) return `${val} ${symbol}`;
-	return val;
-})();
-export const PROVIDER_PAID_TRANSACTIONS_FEE_RECIPIENT =
-	process.env.PROVIDER_PAID_TRANSACTIONS_FEE_RECIPIENT;
-export const PROVIDER_PAID_TRANSACTIONS_FEE_MEMO =
-	process.env.PROVIDER_PAID_TRANSACTIONS_FEE_MEMO ?? 'Fuel Transaction Fee';
-export const PROVIDER_PAID_TRANSACTIONS_FEE_DEFAULT_REF =
-	process.env.PROVIDER_PAID_TRANSACTIONS_FEE_DEFAULT_REF ?? 'teamgreymass';
+export function defaultPaidTransactions(resourceProviderEnabled: boolean): boolean {
+	return resourceProviderEnabled;
+}
+
+export const ENABLE_PAID_TRANSACTIONS = isENVTrue(
+	process.env.ENABLE_PAID_TRANSACTIONS ?? String(defaultPaidTransactions(ENABLE_RESOURCE_PROVIDER))
+);
 
 if (ENABLE_PAID_TRANSACTIONS) {
 	if (!ENABLE_RESOURCE_PROVIDER) {
@@ -189,6 +132,8 @@ if (ENABLE_LIGHTACCOUNT_PROVIDER) {
 		);
 	}
 }
+
+export const ENABLE_ADMIN_API = isENVTrue(process.env.ENABLE_ADMIN_API ?? 'false');
 
 if (
 	ENABLE_RESOURCE_PROVIDER &&

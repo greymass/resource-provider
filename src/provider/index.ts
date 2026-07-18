@@ -18,8 +18,8 @@ const cronOptions: CronOptions = {
 };
 
 async function cleanupUsage() {
-	providerLog.info('Cleaning up expired usage records');
-	await usageDatabase.cleanupExpired();
+	const expired = await usageDatabase.cleanupExpired();
+	providerLog.info('Cleaned up expired usage records', { expired });
 }
 
 export function server() {
