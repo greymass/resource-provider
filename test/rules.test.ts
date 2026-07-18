@@ -100,13 +100,20 @@ describe('resolveFreeGrant', () => {
 	const needs = { cpu: 10, net: 10 };
 	const actions = [{ account: 'eon.shipload', name: 'join' }];
 	it('places a single account in the highest-priority bucket', () => {
-		const grant = resolveFreeGrant(policy, actions, needs, ['alice'], () => ({ cpu: 0, net: 0 }));
+		const grant = resolveFreeGrant(
+			policy,
+			actions,
+			needs,
+			['alice'],
+			() => ({ cpu: 0, net: 0 }),
+			() => true
+		);
 		expect(grant).toEqual([{ account: 'alice', bucket: 'shipload' }]);
 	});
 	it('spills an exhausted account to the wildcard bucket', () => {
 		const usage = (account: string, bucket: string) =>
 			bucket === 'shipload' ? { cpu: 100_000, net: 100_000 } : { cpu: 0, net: 0 };
-		const grant = resolveFreeGrant(policy, actions, needs, ['bob'], usage);
+		const grant = resolveFreeGrant(policy, actions, needs, ['bob'], usage, () => true);
 		expect(grant).toEqual([{ account: 'bob', bucket: 'wildcard' }]);
 	});
 	it('lets different authorizers land in different buckets', () => {
@@ -114,7 +121,7 @@ describe('resolveFreeGrant', () => {
 			account === 'bob' && bucket === 'shipload'
 				? { cpu: 100_000, net: 100_000 }
 				: { cpu: 0, net: 0 };
-		const grant = resolveFreeGrant(policy, actions, needs, ['alice', 'bob'], usage);
+		const grant = resolveFreeGrant(policy, actions, needs, ['alice', 'bob'], usage, () => true);
 		expect(grant).toEqual([
 			{ account: 'alice', bucket: 'shipload' },
 			{ account: 'bob', bucket: 'wildcard' }
@@ -123,16 +130,79 @@ describe('resolveFreeGrant', () => {
 	it('denies the whole transaction when one account cannot place', () => {
 		const usage = (account: string) =>
 			account === 'bob' ? { cpu: 999_999, net: 999_999 } : { cpu: 0, net: 0 };
-		const grant = resolveFreeGrant(policy, actions, needs, ['alice', 'bob'], usage);
+		const grant = resolveFreeGrant(policy, actions, needs, ['alice', 'bob'], usage, () => true);
 		expect(grant).toBeNull();
 	});
 	it('returns null when there are no candidate buckets', () => {
 		const noWild: Policy = { buckets: policy.buckets, rules: [game, place] };
-		const grant = resolveFreeGrant(noWild, [{ account: 'x', name: 'y' }], needs, ['alice'], () => ({
-			cpu: 0,
-			net: 0
-		}));
+		const grant = resolveFreeGrant(
+			noWild,
+			[{ account: 'x', name: 'y' }],
+			needs,
+			['alice'],
+			() => ({
+				cpu: 0,
+				net: 0
+			}),
+			() => true
+		);
 		expect(grant).toBeNull();
+	});
+});
+
+describe('resolveFreeGrant with access lists', () => {
+	const policy = {
+		buckets: [
+			{ name: 'vip', priority: 1, limit_ms: 10, limit_kb: 10 },
+			{ name: 'std', priority: 10, limit_ms: 10, limit_kb: 10 }
+		],
+		rules: [
+			{ name: 'r-vip', bucket: 'vip', allow: ['eon.shipload::*'], require: [] },
+			{ name: 'r-std', bucket: 'std', allow: ['eon.shipload::*'], require: [] }
+		]
+	};
+	const actions = [{ account: 'eon.shipload', name: 'join' }];
+	const needs = { cpu: 100, net: 100 };
+	const zeroUsage = () => ({ cpu: 0, net: 0 });
+	const memberOnly = (member: string) => (account: string, bucket: string) =>
+		bucket !== 'vip' || account === member;
+
+	it('assigns members to the restricted bucket and non-members to the open one', () => {
+		expect(
+			resolveFreeGrant(policy, actions, needs, ['alice'], zeroUsage, memberOnly('alice'))
+		).toEqual([{ account: 'alice', bucket: 'vip' }]);
+		expect(
+			resolveFreeGrant(policy, actions, needs, ['bob'], zeroUsage, memberOnly('alice'))
+		).toEqual([{ account: 'bob', bucket: 'std' }]);
+	});
+
+	it('falls through to the open bucket when the restricted bucket is exhausted', () => {
+		const vipFull = (account: string, bucket: string) =>
+			bucket === 'vip' ? { cpu: 10_000, net: 10_000 } : { cpu: 0, net: 0 };
+		expect(
+			resolveFreeGrant(policy, actions, needs, ['alice'], vipFull, memberOnly('alice'))
+		).toEqual([{ account: 'alice', bucket: 'std' }]);
+	});
+
+	it('fails the whole grant when any billed account is ineligible everywhere', () => {
+		const vipOnlyPolicy = { buckets: [policy.buckets[0]], rules: [policy.rules[0]] };
+		expect(
+			resolveFreeGrant(
+				vipOnlyPolicy,
+				actions,
+				needs,
+				['alice', 'bob'],
+				zeroUsage,
+				memberOnly('alice')
+			)
+		).toBeNull();
+	});
+
+	it('admits everyone when no bucket restricts (open lookup)', () => {
+		const open = () => true;
+		expect(resolveFreeGrant(policy, actions, needs, ['anyone'], zeroUsage, open)).toEqual([
+			{ account: 'anyone', bucket: 'vip' }
+		]);
 	});
 });
 

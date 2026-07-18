@@ -1,5 +1,6 @@
 import { Argument, Command } from 'commander';
 
+import { accessDatabase, isValidAccountName } from '$lib/db/models/provider/access';
 import { policyDatabase } from '$lib/db/models/provider/policy';
 import { usageDatabase } from '$lib/db/models/provider/usage';
 import { generalLog } from '$lib/logger';
@@ -23,6 +24,107 @@ function requireRule(name: string): boolean {
 		return false;
 	}
 	return true;
+}
+
+async function collectAccounts(args: string[], file?: string): Promise<string[] | undefined> {
+	const accounts = [...args];
+	if (file) {
+		const text = await Bun.file(file).text();
+		accounts.push(
+			...text
+				.split('\n')
+				.map((line) => line.trim())
+				.filter((line) => line.length > 0)
+		);
+	}
+	if (accounts.length === 0) {
+		generalLog.error('No accounts given. Pass account names or --file <path>.');
+		return undefined;
+	}
+	const invalid = accounts.filter((account) => !isValidAccountName(account));
+	if (invalid.length > 0) {
+		generalLog.error(`Invalid account names: ${invalid.join(', ')}`);
+		return undefined;
+	}
+	return accounts;
+}
+
+function makeAccessCommand() {
+	const access = new Command('access');
+	access.description('Manage bucket access lists (list existence = enforcement)');
+
+	access
+		.command('add')
+		.addArgument(new Argument('<bucket>', 'Bucket name'))
+		.addArgument(new Argument('[accounts...]', 'Account names'))
+		.option('--file <path>', 'File with one account per line')
+		.description('Add accounts to a bucket access list')
+		.action(async (bucketName, accounts, options) => {
+			const all = await collectAccounts(accounts, options.file);
+			if (!all) return;
+			const result = accessDatabase.add(bucketName, all);
+			generalLog.info(
+				`Bucket ${bucketName}: added=${result.added} ignored=${result.ignored} members=${accessDatabase.count(bucketName)}`
+			);
+		});
+
+	access
+		.command('remove')
+		.addArgument(new Argument('<bucket>', 'Bucket name'))
+		.addArgument(new Argument('[accounts...]', 'Account names'))
+		.option('--file <path>', 'File with one account per line')
+		.description('Remove accounts from a bucket access list')
+		.action(async (bucketName, accounts, options) => {
+			const all = await collectAccounts(accounts, options.file);
+			if (!all) return;
+			const result = accessDatabase.remove(bucketName, all);
+			generalLog.info(
+				`Bucket ${bucketName}: removed=${result.removed} members=${accessDatabase.count(bucketName)}`
+			);
+			if (result.empty) {
+				generalLog.info(`Access list empty — bucket ${bucketName} is now OPEN to all accounts`);
+			}
+		});
+
+	access
+		.command('list')
+		.addArgument(new Argument('<bucket>', 'Bucket name'))
+		.option('--limit <n>', 'Rows per page', '100')
+		.option('--cursor <account>', 'Resume after this account')
+		.description('List accounts on a bucket access list')
+		.action((bucketName, options) => {
+			const limit = Number(options.limit);
+			if (!Number.isInteger(limit) || limit < 1 || limit > 1000) {
+				generalLog.error('limit must be an integer between 1 and 1000');
+				return;
+			}
+			const result = accessDatabase.list(bucketName, limit, options.cursor);
+			for (const row of result.accounts) {
+				generalLog.info(row.account);
+			}
+			if (result.next) {
+				generalLog.info(`More rows — continue with --cursor ${result.next}`);
+			}
+		});
+
+	access
+		.command('check')
+		.addArgument(new Argument('<bucket>', 'Bucket name'))
+		.addArgument(new Argument('<account>', 'Account name'))
+		.description('Check whether an account is on a bucket access list')
+		.action((bucketName, account) => {
+			if (!accessDatabase.isRestricted(bucketName)) {
+				generalLog.info(`Bucket ${bucketName} is open — all accounts eligible`);
+				return;
+			}
+			generalLog.info(
+				accessDatabase.has(bucketName, account)
+					? `${account} is a member of ${bucketName}`
+					: `${account} is NOT a member of ${bucketName}`
+			);
+		});
+
+	return access;
 }
 
 function makeBucketCommand() {
@@ -64,7 +166,10 @@ function makeBucketCommand() {
 			}
 			policyDatabase.removeBucket(name);
 			const purged = usageDatabase.purgeBucket(name);
-			generalLog.info(`Removed bucket ${name}, purged ${purged} usage records`);
+			const purgedMembers = accessDatabase.purgeBucket(name);
+			generalLog.info(
+				`Removed bucket ${name}, purged ${purged} usage records and ${purgedMembers} access list members`
+			);
 		});
 
 	bucket
@@ -73,10 +178,12 @@ function makeBucketCommand() {
 		.action(() => {
 			for (const b of policyDatabase.listBuckets()) {
 				generalLog.info(
-					`${b.name}: priority=${b.priority} limit_ms=${b.limit_ms} limit_kb=${b.limit_kb}`
+					`${b.name}: priority=${b.priority} limit_ms=${b.limit_ms} limit_kb=${b.limit_kb} members=${accessDatabase.count(b.name)}`
 				);
 			}
 		});
+
+	bucket.addCommand(makeAccessCommand());
 
 	return bucket;
 }

@@ -77,3 +77,15 @@ export const tokens = sqliteTable('tokens', {
 	created_at: integer('created_at').notNull(),
 	last_used_at: integer('last_used_at')
 });
+
+export const providerBucketAccount = sqliteTable(
+	'provider_bucket_account',
+	{
+		bucket: text('bucket').notNull(),
+		account: text('account').notNull()
+	},
+	(table) => [
+		primaryKey({ columns: [table.bucket, table.account] }),
+		index('idx_bucket_account_account').on(table.account)
+	]
+);

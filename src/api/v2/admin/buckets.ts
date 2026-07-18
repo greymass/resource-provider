@@ -11,14 +11,24 @@ import {
 	adminUnprocessable
 } from './types';
 
+import { accessDatabase } from '$lib/db/models/provider/access';
 import { policyDatabase } from '$lib/db/models/provider/policy';
 import { usageDatabase } from '$lib/db/models/provider/usage';
 import { invalidatePolicyCache } from '$lib/rules';
 
 const tags = ['Admin'];
 
+function bucketDocument(bucket: {
+	name: string;
+	priority: number;
+	limit_ms: number;
+	limit_kb: number;
+}) {
+	return { ...bucket, members: accessDatabase.count(bucket.name) };
+}
+
 export const adminBuckets = new Elysia({ prefix: '/buckets' })
-	.get('/', () => policyDatabase.listBuckets(), {
+	.get('/', () => policyDatabase.listBuckets().map(bucketDocument), {
 		response: { 200: t.Array(adminBucket), ...adminAuthResponses },
 		detail: { summary: 'List Buckets', tags }
 	})
@@ -30,7 +40,7 @@ export const adminBuckets = new Elysia({ prefix: '/buckets' })
 				set.status = 404;
 				return { code: 404, message: `Unknown bucket '${params.name}'` };
 			}
-			return bucket;
+			return bucketDocument(bucket);
 		},
 		{
 			params: adminNameParams,
@@ -74,10 +84,11 @@ export const adminBuckets = new Elysia({ prefix: '/buckets' })
 			}
 			policyDatabase.removeBucket(params.name);
 			const purged = usageDatabase.purgeBucket(params.name);
+			const purgedMembers = accessDatabase.purgeBucket(params.name);
 			invalidatePolicyCache();
 			return {
 				code: 200,
-				message: `Removed bucket ${params.name}, purged ${purged} usage records`
+				message: `Removed bucket ${params.name}, purged ${purged} usage records and ${purgedMembers} access list members`
 			};
 		},
 		{

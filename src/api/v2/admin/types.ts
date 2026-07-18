@@ -57,7 +57,8 @@ export const adminBucket = t.Object(
 		name: t.String(),
 		priority: t.Integer({ minimum: 0 }),
 		limit_ms: t.Integer({ minimum: 1 }),
-		limit_kb: t.Integer({ minimum: 1 })
+		limit_kb: t.Integer({ minimum: 1 }),
+		members: t.Integer({ minimum: 0 })
 	},
 	closed
 );
@@ -152,3 +153,40 @@ export const adminUsageQuery = t.Object(
 	},
 	closed
 );
+
+export const adminMemberRow = t.Object({ account: t.String() }, closed);
+
+export const adminMemberPage = t.Object(
+	{
+		accounts: t.Array(adminMemberRow),
+		next_cursor: t.Union([t.String(), t.Null()])
+	},
+	closed
+);
+
+export const adminMemberQuery = t.Object(
+	{
+		limit: t.Optional(t.Numeric({ minimum: 1, maximum: 1000, multipleOf: 1 })),
+		cursor: t.Optional(t.String())
+	},
+	closed
+);
+
+export const adminAccountsBody = t.Object(
+	{ accounts: t.Array(t.String(), { minItems: 1, maxItems: 5000 }) },
+	closed
+);
+
+export const adminBulkAddResult = t.Object(
+	{ added: t.Integer(), ignored: t.Integer(), members: t.Integer() },
+	closed
+);
+
+export const adminBulkRemoveResult = t.Object(
+	{ removed: t.Integer(), empty: t.Boolean(), members: t.Integer(), message: t.String() },
+	closed
+);
+
+export const adminMembership = t.Object({ bucket: t.String() }, closed);
+
+export const adminMemberParams = t.Object({ name: t.String(), account: t.String() }, closed);

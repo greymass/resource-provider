@@ -5,6 +5,7 @@ import type { Static } from 'elysia';
 
 import { v1ProviderRequestBody } from '$api/v1/types';
 import type { v1ResponseTypes } from '$api/v1/types';
+import { accessDatabase } from '$lib/db/models/provider/access';
 import { usageDatabase } from '$lib/db/models/provider/usage';
 import { providerLog } from '$lib/logger';
 import { loadPolicy, resolveFreeGrant } from '$lib/rules';
@@ -99,7 +100,9 @@ async function processRequest(
 				matchActions,
 				{ cpu: resourceNeeds.cpu, net: resourceNeeds.net },
 				billed,
-				(account, bucket) => usageDatabase.getBucketUsage(account, bucket)
+				(account, bucket) => usageDatabase.getBucketUsage(account, bucket),
+				(account, bucket) =>
+					!accessDatabase.isRestricted(bucket) || accessDatabase.has(bucket, account)
 			)
 		: null;
 

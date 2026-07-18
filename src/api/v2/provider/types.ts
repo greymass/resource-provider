@@ -144,7 +144,9 @@ export const v2ProviderUsageResponse = t.Object({
 		t.Object({
 			bucket: t.String(),
 			usage: t.Object({ cpu: t.Number(), net: t.Number() }),
-			limit: t.Object({ cpu: t.Number(), net: t.Number() })
+			limit: t.Object({ cpu: t.Number(), net: t.Number() }),
+			restricted: t.Boolean(),
+			eligible: t.Boolean()
 		})
 	)
 });

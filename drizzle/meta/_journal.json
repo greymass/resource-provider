@@ -71,6 +71,13 @@
       "when": 1784168550264,
       "tag": "0009_large_liz_osborn",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1784354247147,
+      "tag": "0010_condemned_human_robot",
+      "breakpoints": true
     }
   ]
 }

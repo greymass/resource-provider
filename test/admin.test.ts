@@ -197,19 +197,22 @@ describe('admin bucket endpoints', () => {
 			priority: number;
 			limit_ms: number;
 			limit_kb: number;
+			members: number;
 		}>;
 		expect(buckets.find((bucket) => bucket.name === 'wildcard')).toEqual({
 			name: 'wildcard',
 			priority: 1000,
 			limit_ms: 5,
-			limit_kb: 10
+			limit_kb: 10,
+			members: 0
 		});
 		const one = await app.handle(adminRequest('/buckets/wildcard', appToken));
 		expect(await one.json()).toEqual({
 			name: 'wildcard',
 			priority: 1000,
 			limit_ms: 5,
-			limit_kb: 10
+			limit_kb: 10,
+			members: 0
 		});
 	});
 	it('404s on unknown buckets', async () => {
