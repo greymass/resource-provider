@@ -193,24 +193,3 @@ rpcli vacuum            # Force SQLite VACUUM on the database
 ### Tests
 
 `make test`
-
-## Optional Transaction Pass RAM sponsor
-
-The RAM_MANAGER_URL and RAM_MANAGER_TOKEN server settings enable the standalone
-[RAM Manager](https://github.com/dafuga/ram-manager) on Jungle4. The provider first
-simulates each transaction, validates its RAM payer, then requests the required account
-quota with a 50-byte safety buffer. Configure a provisioning-only API key for the
-Transaction Pass client in RAM Manager. The manager authenticates the key, checks
-that client's unexpired member list, and enforces member, client and global caps.
-Transaction Pass manages the member list using its own full client key; the provider
-key cannot add members or change allowances. Never use the service's admin token.
-
-Eligible transactions are re-estimated after capacity is ensured. The original
-transaction never gains a player-funded RAM purchase. A pending gift, foreign giver,
-budget ceiling, or oversized transaction stops sponsorship without silently charging
-the player. Ineligible accounts retain the existing provider behavior. No browser
-credential or new wallet plugin is required. CPU/NET quotas remain unchanged.
-
-Keep these settings unset until the sponsor is funded and the separate service is
-running. The first service release is pinned to Jungle4; the provider rejects this
-integration on another chain. Use the same giver as existing account-creation gifts.
