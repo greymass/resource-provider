@@ -43,6 +43,10 @@ export function createMockFetch(originalFetch: typeof globalThis.fetch) {
 	): Promise<Response> {
 		const url =
 			typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+		const target = new URL(url);
+		if (target.hostname === '127.0.0.1' && target.pathname === '/v1/ensure') {
+			return originalFetch(input, init);
+		}
 		const rawBody = init?.body ?? (input instanceof Request ? input.body : null);
 		const body = parseBody(rawBody as BodyInit | null);
 		const fixturePath = getFixturePath(url, body);

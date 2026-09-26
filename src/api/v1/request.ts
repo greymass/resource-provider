@@ -1,4 +1,4 @@
-import { Asset, PermissionLevel, UInt64 } from '@wharfkit/antelope';
+import { Asset, PermissionLevel } from '@wharfkit/antelope';
 import type { API } from '@wharfkit/antelope';
 import type { SigningRequest } from '@wharfkit/signing-request';
 import type { Static } from 'elysia';
@@ -9,12 +9,11 @@ import { usageDatabase } from '$lib/db/models/provider/usage';
 import { providerLog } from '$lib/logger';
 import { addFeeAction } from '$lib/wharf/actions/fee';
 import { addNoopAction } from '$lib/wharf/actions/noop';
-import { addBuyRAMBytesAction } from '$lib/wharf/actions/ram';
 import { getClient } from '$lib/wharf/client';
 import { getStaleContract, invalidateContractCache } from '$lib/wharf/contracts';
-import { RAM_SAFETY_BUFFER_BYTES, computeResourceNeeds } from '$lib/wharf/estimation';
 import type { ResourceNeeds } from '$lib/wharf/estimation';
 import { calculateCosts, calculateTotalFee } from '$lib/wharf/pricing';
+import { provisionRam } from '$lib/wharf/ram-provisioning';
 import { getProviderSession, signTransaction } from '$lib/wharf/session';
 import { createSigningRequest, resolveTransaction } from '$lib/wharf/signing-request';
 import {
@@ -87,22 +86,16 @@ async function processRequest(
 	}
 	providerLog.debug('Account data retrieved', { account: String(requester.actor) });
 
-	checkResourceSufficiency(accountData);
-	providerLog.debug('Resource sufficiency check passed');
-
 	let transaction = await resolveTransaction(request, requester);
 	providerLog.debug('Transaction resolved', { actions: transaction.actions.length });
 
 	transaction = await addNoopAction(transaction, cosigner);
 	providerLog.debug('Noop action added');
 
-	const resourceNeeds = await computeResourceNeeds(transaction);
-	providerLog.debug('Resource needs computed', resourceNeeds);
-
-	if (resourceNeeds.ram > 0) {
-		const ramBytes = UInt64.from(resourceNeeds.ram + RAM_SAFETY_BUFFER_BYTES);
-		transaction = await addBuyRAMBytesAction(transaction, requester, ramBytes);
-	}
+	const provisioned = await provisionRam(transaction, requester);
+	transaction = provisioned.transaction;
+	const resourceNeeds = provisioned.resources;
+	if (!provisioned.sponsored) checkResourceSufficiency(accountData);
 
 	const withinQuota = await checkQuota(String(requester.actor), resourceNeeds);
 

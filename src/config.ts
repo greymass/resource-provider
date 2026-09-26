@@ -213,3 +213,7 @@ export const explorers: Record<string, string> = {
 	'1064487b3cd1a897ce03ae5b6a865651747e2e152090f99c1d19d44e01aea5a4': 'https://wax.unicove.com',
 	'5fff1dae8dc8e2fc4d5b23b2c7665c97f9e9d8edf2b6485a86ba311c25639191': 'https://kylin.unicove.com'
 };
+
+// Optional standalone RAM sponsor, authenticated server-to-server. Jungle4 only in v1.
+export const RAM_MANAGER_URL = process.env.RAM_MANAGER_URL;
+export const RAM_MANAGER_TOKEN = process.env.RAM_MANAGER_TOKEN;
