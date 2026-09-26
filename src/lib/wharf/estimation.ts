@@ -8,6 +8,8 @@ export interface ResourceNeeds {
 	cpu: number;
 	net: number;
 	ram: number;
+	ramAccount?: string;
+	ramRequired?: number;
 }
 
 export interface ResourceCosts {
@@ -30,6 +32,8 @@ export function determineResourceNeeds(samples: API.v1.SendTransactionResponse[]
 	const cpu = cpuMedian(samples);
 	const net = samples[0].processed.net_usage;
 	let ram = 0;
+	let ramAccount: string | undefined;
+	let ramRequired: number | undefined;
 	const exception = samples[0].processed.except;
 	if (exception && exception.name) {
 		switch (exception.name) {
@@ -39,8 +43,17 @@ export function determineResourceNeeds(samples: API.v1.SendTransactionResponse[]
 					needs: number;
 					available: number;
 				} = exception.stack[0].data;
-				const { available, needs } = data;
+				const { account, available, needs } = data;
+				if (
+					![available, needs].every(Number.isSafeInteger) ||
+					needs <= available ||
+					available < 0
+				) {
+					throw new Error('Invalid RAM estimate.');
+				}
 				ram = needs - available;
+				ramAccount = account;
+				ramRequired = needs;
 				break;
 			}
 			default: {
@@ -60,7 +73,7 @@ export function determineResourceNeeds(samples: API.v1.SendTransactionResponse[]
 			}
 		}
 	}
-	return { cpu, net, ram };
+	return { cpu, net, ram, ...(ram > 0 ? { ramAccount, ramRequired } : {}) };
 }
 
 export async function computeResourceNeeds(

@@ -7,7 +7,8 @@ const jungle4 = '73e4385a2708e6d7048834fbc1079f2fabb17b3c125b146af438971e90716c4
 export async function ensureSponsoredRam(
 	account: string,
 	requestId: string,
-	config: RamManagerConfig
+	config: RamManagerConfig,
+	requiredQuotaBytes?: number
 ): Promise<boolean> {
 	if (!config.url && !config.token) return false;
 	if (!config.url || !config.token || config.token.length < 32 || config.chainId !== jungle4) {
@@ -28,7 +29,7 @@ export async function ensureSponsoredRam(
 		method: 'POST',
 		redirect: 'error',
 		headers: { Authorization: 'Bearer ' + config.token, 'Content-Type': 'application/json' },
-		body: JSON.stringify({ account, requestId }),
+		body: JSON.stringify({ account, requestId, requiredQuotaBytes }),
 		signal: AbortSignal.timeout(20000)
 	});
 	if (!response.ok) throw new Error('Sponsored capacity is temporarily unavailable.');
