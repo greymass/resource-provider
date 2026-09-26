@@ -199,8 +199,11 @@ rpcli vacuum            # Force SQLite VACUUM on the database
 The RAM_MANAGER_URL and RAM_MANAGER_TOKEN server settings enable the standalone
 [RAM Manager](https://github.com/dafuga/ram-manager) on Jungle4. The provider first
 simulates each transaction, validates its RAM payer, then requests the required account
-quota with a 50-byte safety buffer. The manager authenticates the provider, independently checks the player's
-on-chain Transaction Pass entitlement, and enforces durable byte and token caps.
+quota with a 50-byte safety buffer. Configure a provisioning-only API key for the
+Transaction Pass client in RAM Manager. The manager authenticates the key, checks
+that client's unexpired member list, and enforces member, client and global caps.
+Transaction Pass manages the member list using its own full client key; the provider
+key cannot add members or change allowances. Never use the service's admin token.
 
 Eligible transactions are re-estimated after capacity is ensured. The original
 transaction never gains a player-funded RAM purchase. A pending gift, foreign giver,
