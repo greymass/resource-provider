@@ -11,6 +11,7 @@ import { objectify } from '$lib/utils';
 import { getPowerupParams } from '$lib/wharf/actions/powerup';
 import { getClient } from '$lib/wharf/client';
 import { getContract } from '$lib/wharf/contracts';
+import { getLeaseRenewals, getPowerupOrders } from '$lib/wharf/leases';
 import { getAccountRequiredResources } from '$lib/wharf/resources';
 import { ANTELOPE_SYSTEM_CONTRACT } from 'src/config';
 
@@ -23,6 +24,15 @@ export async function manageAccountResources(
 		const managed = ManagedAccount.from(account);
 		const data = await getClient().v1.chain.get_account(managed.account);
 		const requiredResources = getAccountRequiredResources(managed, data);
+		const renewals = getLeaseRenewals(await getPowerupOrders(managed.account));
+		if (renewals.cpuRequired || renewals.netRequired) {
+			managerLog.info(
+				'Account leases expiring soon, renewing',
+				objectify({ account: managed.account, renewals })
+			);
+		}
+		requiredResources.cpuRequired ||= renewals.cpuRequired;
+		requiredResources.netRequired ||= renewals.netRequired;
 		const params = getPowerupParams(
 			managed.inc_ms,
 			managed.inc_kb,
