@@ -27,3 +27,12 @@ describe('getLeaseRenewals', () => {
 		});
 	});
 });
+
+describe('self-management uses the shared renewal check', () => {
+	it('routes the manager account through getRequiredResourcesWithRenewals', async () => {
+		const src = await Bun.file('src/lib/self-management.ts').text();
+		expect(src).toContain('getRequiredResourcesWithRenewals(managed, data)');
+		const acct = await Bun.file('src/manager/manage/account.ts').text();
+		expect(acct).toContain('getRequiredResourcesWithRenewals(managed, data)');
+	});
+});

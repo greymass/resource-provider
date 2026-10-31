@@ -2,7 +2,10 @@ import { API, Name, NameType } from '@wharfkit/antelope';
 
 import { AccountRequiredResources } from './actions/powerup';
 import { getClient } from './client';
+import { getAccountRequiredResources } from './resources';
 
+import { ManagedAccount } from '$lib/db/models/manager/account';
+import { managerLog } from '$lib/logger';
 import { ANTELOPE_SYSTEM_CONTRACT, MANAGER_RENEW_BEFORE_EXPIRY_MINUTES } from 'src/config';
 
 export interface PowerupOrder {
@@ -50,5 +53,25 @@ export function getLeaseRenewals(
 	return {
 		cpuRequired: windowMinutes > 0 && cpu !== undefined && cpu <= cutoff,
 		netRequired: windowMinutes > 0 && net !== undefined && net <= cutoff
+	};
+}
+
+// Shared by managed accounts and the manager's own self-management: low free resources
+// OR a lease about to expire both trigger a powerup.
+export async function getRequiredResourcesWithRenewals(
+	managed: ManagedAccount,
+	data: API.v1.AccountObject
+): Promise<AccountRequiredResources> {
+	const required = getAccountRequiredResources(managed, data);
+	const renewals = getLeaseRenewals(await getPowerupOrders(managed.account));
+	if (renewals.cpuRequired || renewals.netRequired) {
+		managerLog.info('Account leases expiring soon, renewing', {
+			account: String(managed.account),
+			...renewals
+		});
+	}
+	return {
+		cpuRequired: required.cpuRequired || renewals.cpuRequired,
+		netRequired: required.netRequired || renewals.netRequired
 	};
 }

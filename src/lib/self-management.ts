@@ -6,11 +6,8 @@ import { generalLog } from '$lib/logger';
 import { getPowerupParams } from '$lib/wharf/actions/powerup';
 import { getClient } from '$lib/wharf/client';
 import { getContract } from '$lib/wharf/contracts';
-import {
-	getAccountRequiredResources,
-	getResourcesClient,
-	getSampledUsage
-} from '$lib/wharf/resources';
+import { getRequiredResourcesWithRenewals } from '$lib/wharf/leases';
+import { getResourcesClient, getSampledUsage } from '$lib/wharf/resources';
 import { ANTELOPE_SYSTEM_CONTRACT, ANTELOPE_SYSTEM_TOKEN } from 'src/config';
 
 export interface SelfManagementConfig {
@@ -56,7 +53,7 @@ export async function manageSelfResources(session: Session, config: SelfManageme
 		max_fee: Asset.fromFloat(Number(config.maxFee), ANTELOPE_SYSTEM_TOKEN)
 	});
 
-	const requiredResources = getAccountRequiredResources(managed, data);
+	const requiredResources = await getRequiredResourcesWithRenewals(managed, data);
 	const sampleUsage = await getSampledUsage();
 	const powerup = await getResourcesClient().v1.powerup.get_state();
 
