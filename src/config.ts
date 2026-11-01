@@ -220,3 +220,7 @@ export const explorers: Record<string, string> = {
 // Optional standalone RAM sponsor, authenticated server-to-server. Jungle4 only in v1.
 export const RAM_MANAGER_URL = process.env.RAM_MANAGER_URL;
 export const RAM_MANAGER_TOKEN = process.env.RAM_MANAGER_TOKEN;
+
+export const MANAGER_POWERUP_COOLDOWN_SECONDS = process.env.MANAGER_POWERUP_COOLDOWN_SECONDS
+	? Number(process.env.MANAGER_POWERUP_COOLDOWN_SECONDS)
+	: 300;

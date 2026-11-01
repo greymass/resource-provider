@@ -6,8 +6,9 @@ import { generalLog } from '$lib/logger';
 import { getPowerupParams } from '$lib/wharf/actions/powerup';
 import { getClient } from '$lib/wharf/client';
 import { getContract } from '$lib/wharf/contracts';
+import { inPowerupCooldown, recordPowerup } from '$lib/wharf/cooldown';
 import { getRequiredResourcesWithRenewals } from '$lib/wharf/leases';
-import { getResourcesClient, getSampledUsage } from '$lib/wharf/resources';
+import { getPurchaseAmounts, getResourcesClient, getSampledUsage } from '$lib/wharf/resources';
 import { ANTELOPE_SYSTEM_CONTRACT, ANTELOPE_SYSTEM_TOKEN } from 'src/config';
 
 export interface SelfManagementConfig {
@@ -53,13 +54,18 @@ export async function manageSelfResources(session: Session, config: SelfManageme
 		max_fee: Asset.fromFloat(Number(config.maxFee), ANTELOPE_SYSTEM_TOKEN)
 	});
 
+	if (inPowerupCooldown(String(actor))) {
+		generalLog.debug('powerup cooldown active, skipping', { account: String(actor) });
+		return;
+	}
 	const requiredResources = await getRequiredResourcesWithRenewals(managed, data);
+	const amounts = getPurchaseAmounts(managed, data, requiredResources);
 	const sampleUsage = await getSampledUsage();
 	const powerup = await getResourcesClient().v1.powerup.get_state();
 
 	const params = getPowerupParams(
-		managed.inc_ms,
-		managed.inc_kb,
+		amounts.ms,
+		amounts.kb,
 		powerup,
 		sampleUsage,
 		requiredResources,
@@ -86,6 +92,8 @@ export async function manageSelfResources(session: Session, config: SelfManageme
 			});
 			return;
 		}
+		if (params.cpu_frac.gt(Int64.zero) || params.net_frac.gt(Int64.zero))
+			recordPowerup(String(actor));
 		generalLog.info('Self-management transaction successful', {
 			account: actor,
 			trx_id: String(result.resolved?.transaction.id)

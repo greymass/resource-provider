@@ -11,7 +11,9 @@ import { objectify } from '$lib/utils';
 import { getPowerupParams } from '$lib/wharf/actions/powerup';
 import { getClient } from '$lib/wharf/client';
 import { getContract } from '$lib/wharf/contracts';
+import { inPowerupCooldown, recordPowerup } from '$lib/wharf/cooldown';
 import { getRequiredResourcesWithRenewals } from '$lib/wharf/leases';
+import { getPurchaseAmounts } from '$lib/wharf/resources';
 import { ANTELOPE_SYSTEM_CONTRACT } from 'src/config';
 
 export async function manageAccountResources(
@@ -22,10 +24,15 @@ export async function manageAccountResources(
 	try {
 		const managed = ManagedAccount.from(account);
 		const data = await getClient().v1.chain.get_account(managed.account);
+		if (inPowerupCooldown(String(managed.account))) {
+			managerLog.debug('powerup cooldown active, skipping', { account: String(managed.account) });
+			return;
+		}
 		const requiredResources = await getRequiredResourcesWithRenewals(managed, data);
+		const amounts = getPurchaseAmounts(managed, data, requiredResources);
 		const params = getPowerupParams(
-			managed.inc_ms,
-			managed.inc_kb,
+			amounts.ms,
+			amounts.kb,
 			context.powerup,
 			context.sampleUsage,
 			requiredResources,
@@ -48,6 +55,7 @@ export async function manageAccountResources(
 				);
 				return;
 			}
+			recordPowerup(String(managed.account));
 			managerLog.info(
 				'powerup successful',
 				objectify({
