@@ -30,14 +30,27 @@ export async function getPowerupOrders(account: NameType): Promise<PowerupOrder[
 	return (result.rows as PowerupOrder[]).filter((row) => row.owner === owner);
 }
 
-function latestExpiry(
+function parseExpiry(order: PowerupOrder): number {
+	return Date.parse(order.expires.endsWith('Z') ? order.expires : `${order.expires}Z`);
+}
+
+// True when the weight of leases expiring inside the window outweighs the weight that
+// stays after it. Using only the newest lease missed a big lease expiring next to a
+// small, newer one (Nov 1 outage). After a same-size renewal it stops triggering.
+function expiringOutweighsRemaining(
 	orders: PowerupOrder[],
-	weight: 'cpu_weight' | 'net_weight'
-): number | undefined {
-	const times = orders
-		.filter((order) => Number(order[weight]) > 0)
-		.map((order) => Date.parse(order.expires.endsWith('Z') ? order.expires : `${order.expires}Z`));
-	return times.length ? Math.max(...times) : undefined;
+	weight: 'cpu_weight' | 'net_weight',
+	cutoff: number
+): boolean {
+	let expiring = 0;
+	let remaining = 0;
+	for (const order of orders) {
+		const w = Number(order[weight]);
+		if (!(w > 0)) continue;
+		if (parseExpiry(order) <= cutoff) expiring += w;
+		else remaining += w;
+	}
+	return expiring > remaining;
 }
 
 // An account needs a renewal when its newest CPU (or NET) lease expires within the window.
@@ -48,11 +61,9 @@ export function getLeaseRenewals(
 	windowMinutes = MANAGER_RENEW_BEFORE_EXPIRY_MINUTES
 ): AccountRequiredResources {
 	const cutoff = now + windowMinutes * 60 * 1000;
-	const cpu = latestExpiry(orders, 'cpu_weight');
-	const net = latestExpiry(orders, 'net_weight');
 	return {
-		cpuRequired: windowMinutes > 0 && cpu !== undefined && cpu <= cutoff,
-		netRequired: windowMinutes > 0 && net !== undefined && net <= cutoff
+		cpuRequired: windowMinutes > 0 && expiringOutweighsRemaining(orders, 'cpu_weight', cutoff),
+		netRequired: windowMinutes > 0 && expiringOutweighsRemaining(orders, 'net_weight', cutoff)
 	};
 }
 
