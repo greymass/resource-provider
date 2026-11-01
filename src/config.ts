@@ -36,6 +36,9 @@ export const MANAGER_MIN_MS = process.env.MANAGER_MIN_MS ? Number(process.env.MA
 export const MANAGER_MIN_KB = process.env.MANAGER_MIN_KB ? Number(process.env.MANAGER_MIN_KB) : 5;
 export const MANAGER_INC_MS = process.env.MANAGER_INC_MS ? Number(process.env.MANAGER_INC_MS) : 10;
 export const MANAGER_INC_KB = process.env.MANAGER_INC_KB ? Number(process.env.MANAGER_INC_KB) : 10;
+export const MANAGER_RENEW_BEFORE_EXPIRY_MINUTES = process.env.MANAGER_RENEW_BEFORE_EXPIRY_MINUTES
+	? Number(process.env.MANAGER_RENEW_BEFORE_EXPIRY_MINUTES)
+	: 120; // 0 disables
 
 if (ENABLE_RESOURCE_MANAGER) {
 	if (!MANAGER_ACCOUNT_NAME) {
@@ -217,3 +220,7 @@ export const explorers: Record<string, string> = {
 // Optional standalone RAM sponsor, authenticated server-to-server. Jungle4 only in v1.
 export const RAM_MANAGER_URL = process.env.RAM_MANAGER_URL;
 export const RAM_MANAGER_TOKEN = process.env.RAM_MANAGER_TOKEN;
+
+export const MANAGER_POWERUP_COOLDOWN_SECONDS = process.env.MANAGER_POWERUP_COOLDOWN_SECONDS
+	? Number(process.env.MANAGER_POWERUP_COOLDOWN_SECONDS)
+	: 300;

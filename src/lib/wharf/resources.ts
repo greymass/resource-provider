@@ -1,4 +1,4 @@
-import { API } from '@wharfkit/antelope';
+import { API, Int64 } from '@wharfkit/antelope';
 import { Resources } from '@wharfkit/resources';
 
 import { AccountRequiredResources } from './actions/powerup';
@@ -90,4 +90,26 @@ export function getAccountRequiredResources(
 		);
 	}
 	return { cpuRequired, netRequired };
+}
+
+// Size a purchase so one powerup clears the whole deficit: the configured increment plus
+// whatever is missing to get back above the minimum. Buying only the fixed increment
+// left accounts deep below zero re-buying every cycle (rngfront.gm, Nov 1).
+export function getPurchaseAmounts(
+	managed: ManagedAccount,
+	data: API.v1.AccountObject,
+	required: AccountRequiredResources
+): { ms: Int64; kb: Int64 } {
+	const resources = getAccountCurrentResources(data);
+	const deficit = (current: Int64, minimumUnits: Int64) => {
+		const missing = Number(minimumUnits) - Number(current);
+		return missing > 0 ? Math.ceil(missing / 1000) : 0;
+	};
+	const ms = required.cpuRequired
+		? Number(managed.inc_ms) + deficit(resources.cpu, managed.min_ms.multiplying(1000))
+		: Number(managed.inc_ms);
+	const kb = required.netRequired
+		? Number(managed.inc_kb) + deficit(resources.net, managed.min_kb.multiplying(1000))
+		: Number(managed.inc_kb);
+	return { ms: Int64.from(ms), kb: Int64.from(kb) };
 }
